@@ -89,6 +89,7 @@ function runJobOpsIngestion_(forceDryRun) {
     }
 
     const jobRecords = [];
+    const duplicateUpdateTargets = new Map();
     const errorRecords = [];
     const processedThreads = [];
     const failedThreads = [];
@@ -104,12 +105,28 @@ function runJobOpsIngestion_(forceDryRun) {
           messageId: envelope.input.messageId,
           jobUrl: parsed.jobUrl,
           deduplicationKey: record.DEDUPLICATION_KEY,
+          source: parsed.source,
+          sourceJobId: parsed.sourceJobId,
         };
+        const duplicateMatch = findJobOpsDuplicateMatch_(candidate, deduplicationIndex);
 
-        if (isDuplicateJobOpsCandidate_(candidate, deduplicationIndex)) {
+        if (duplicateMatch) {
           duplicateCount += 1;
+          if (duplicateMatch.target) {
+            Object.assign(
+              duplicateMatch.target.record,
+              mergeJobOpsDuplicateRecord_(duplicateMatch.target.record, record),
+            );
+            registerJobOpsCandidate_(candidate, deduplicationIndex, duplicateMatch.target);
+
+            if (duplicateMatch.target.kind === 'existing') {
+              duplicateMatch.target.dirty = true;
+              duplicateUpdateTargets.set(duplicateMatch.target.rowNumber, duplicateMatch.target);
+            }
+          }
         } else {
-          registerJobOpsCandidate_(candidate, deduplicationIndex);
+          const target = { kind: 'pending', record };
+          registerJobOpsCandidate_(candidate, deduplicationIndex, target);
           jobRecords.push(record);
         }
 
@@ -142,7 +159,12 @@ function runJobOpsIngestion_(forceDryRun) {
 
     if (!dryRun) {
       try {
-        writeJobOpsIngestionBatch_(spreadsheet, jobRecords, errorRecords);
+        writeJobOpsIngestionBatch_(
+          spreadsheet,
+          Array.from(duplicateUpdateTargets.values()),
+          jobRecords,
+          errorRecords,
+        );
       } catch (error) {
         try {
           finalizeJobOpsThreadLabels_(
@@ -162,7 +184,7 @@ function runJobOpsIngestion_(forceDryRun) {
 
     const summary = {
       ok: true,
-      phase: 2,
+      phase: 3,
       dryRun,
       scannedMessages: inbox.scannedMessages,
       candidateMessages: inbox.candidates.length,
@@ -197,14 +219,16 @@ function normalizeJobOpsParserError_(error) {
 }
 
 /**
- * Writes successful and failed records in at most two Sheets calls.
+ * Writes exact-duplicate enrichments, new jobs and parsing failures in batches.
  *
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @param {{rowNumber: number, record: Object<string, *>}[]} duplicateUpdateTargets
  * @param {Object[]} jobRecords
  * @param {Object[]} errorRecords
  */
-function writeJobOpsIngestionBatch_(spreadsheet, jobRecords, errorRecords) {
+function writeJobOpsIngestionBatch_(spreadsheet, duplicateUpdateTargets, jobRecords, errorRecords) {
   try {
+    updateJobOpsDuplicateJobRecords_(spreadsheet, duplicateUpdateTargets);
     appendJobOpsJobRecords_(spreadsheet, jobRecords);
     appendJobOpsParsingErrorRecords_(spreadsheet, errorRecords);
   } catch (error) {
@@ -225,6 +249,6 @@ function writeJobOpsIngestionBatch_(spreadsheet, jobRecords, errorRecords) {
  */
 function logJobOpsIngestionSummary_(summary) {
   Logger.log(
-    `JobOps Phase 2: dryRun=${summary.dryRun}, scanned=${summary.scannedMessages}, candidates=${summary.candidateMessages}, created=${summary.createdJobs}, wouldCreate=${summary.wouldCreateJobs}, errors=${summary.parsingErrors}, duplicates=${summary.duplicates}`,
+    `JobOps Phase 3: dryRun=${summary.dryRun}, scanned=${summary.scannedMessages}, candidates=${summary.candidateMessages}, created=${summary.createdJobs}, wouldCreate=${summary.wouldCreateJobs}, errors=${summary.parsingErrors}, duplicates=${summary.duplicates}`,
   );
 }

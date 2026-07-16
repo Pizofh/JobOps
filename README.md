@@ -1,6 +1,6 @@
 # JobOps
 
-JobOps es un sistema personal y privado para organizar una búsqueda de empleo desde Google Apps Script, Gmail y Google Sheets. El repositorio contiene la configuración inicial y la **Fase 2** de ingestión.
+JobOps es un sistema personal y privado para organizar una búsqueda de empleo desde Google Apps Script, Gmail y Google Sheets. El repositorio contiene la configuración inicial, la ingestión y la **Fase 3** de parsers y deduplicación.
 
 `setupJobOps()` crea de forma no destructiva las hojas, datos configurables, validaciones, formato y etiquetas de Gmail. `dryRunIngestion()` inspecciona mensajes recientes sin modificar Gmail ni Sheets y `ingestJobs()` guarda vacantes detectadas, errores limitados y etiquetas operativas. Todavía no instala triggers ni envía correos.
 
@@ -55,4 +55,4 @@ Apps Script representa el código de servidor como archivos de script y su edito
 
 ## Estado
 
-Fase completada: **Fase 2 — Ingestión base de Gmail**. Incluye fuentes configurables, parser genérico, parser de reclutadores y soporte para mensajes reenviados desde un correo profesional. Los parsers específicos de portales, scoring completo, triggers y digest permanecen para fases posteriores.
+Fase completada: **Fase 3 — Parsers y deduplicación**. Incluye parsers para LinkedIn e Indeed, parser genérico para fuentes sin fixture específico, detección de ID por fuente, URLs canónicas y actualización de `ALL_SOURCES` sin alterar campos manuales. Scoring, recomendación de CV, triggers y digest permanecen para fases posteriores.

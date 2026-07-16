@@ -171,7 +171,7 @@ function containsJobOpsSignal_(foldedText, signal) {
 }
 
 /**
- * Parses one candidate through the currently supported Phase 2 parsers.
+ * Parses one candidate through the configured, explicitly supported parser.
  *
  * @param {Object} input
  * @param {Object[]} sourceDefinitions
@@ -188,10 +188,31 @@ function parseJobOpsMessage_(input, sourceDefinitions) {
     );
   }
 
-  const parsed = detection.isRecruiter
-    ? parseRecruiterJob_(input, detection)
-    : parseGenericJob_(input, detection);
+  const parsed = parseJobOpsDetectedSource_(input, detection);
   return { ...parsed, detection };
+}
+
+/**
+ * Selects supported parsers without evaluating sheet-provided code names.
+ * Unknown future parser names deliberately use the generic parser.
+ *
+ * @param {Object} input
+ * @param {Object} detection
+ * @returns {Object}
+ */
+function parseJobOpsDetectedSource_(input, detection) {
+  if (detection.isRecruiter) {
+    return parseRecruiterJob_(input, detection);
+  }
+
+  switch (normalizeJobOpsSingleLineText_(detection.parserName)) {
+    case 'parseLinkedInJob':
+      return parseLinkedInJob_(input, detection);
+    case 'parseIndeedJob':
+      return parseIndeedJob_(input, detection);
+    default:
+      return parseGenericJob_(input, detection);
+  }
 }
 
 /**
@@ -277,6 +298,56 @@ function parseGenericJob_(input, detection) {
     confidence: calculateJobOpsParserConfidence_(position, company, jobUrl, location),
     warnings,
   };
+}
+
+/**
+ * Parses a LinkedIn alert using its verified job-detail URL as the stable
+ * source identifier. Field extraction remains shared with the generic parser
+ * because both formats use the same normalized parser contract.
+ *
+ * @param {Object} input
+ * @param {Object} detection
+ * @returns {Object}
+ */
+function parseLinkedInJob_(input, detection) {
+  const parsed = parseGenericJob_(input, { ...detection, parserName: 'parseGenericJob' });
+  const urls = extractJobOpsUrls_(`${detection.effective.body}\n${input.htmlBody || ''}`);
+  const linkedInUrl = chooseJobOpsSourceUrl_(urls, 'linkedin.com');
+
+  if (linkedInUrl) {
+    parsed.jobUrl = linkedInUrl;
+    parsed.sourceJobId = extractJobOpsSourceJobId_(linkedInUrl);
+  } else {
+    parsed.warnings.push('LinkedIn job-detail URL was not detected; generic URL retained.');
+  }
+
+  parsed.parserName = 'parseLinkedInJob';
+  return parsed;
+}
+
+/**
+ * Parses Indeed alerts using their known job-detail domain and `jk` identifier.
+ * The shared field parser remains intentionally conservative until more
+ * anonymized real-world fixtures demonstrate additional stable fields.
+ *
+ * @param {Object} input
+ * @param {Object} detection
+ * @returns {Object}
+ */
+function parseIndeedJob_(input, detection) {
+  const parsed = parseGenericJob_(input, { ...detection, parserName: 'parseGenericJob' });
+  const urls = extractJobOpsUrls_(`${detection.effective.body}\n${input.htmlBody || ''}`);
+  const indeedUrl = chooseJobOpsSourceUrl_(urls, 'indeed.com');
+
+  if (indeedUrl) {
+    parsed.jobUrl = indeedUrl;
+    parsed.sourceJobId = extractJobOpsSourceJobId_(indeedUrl);
+  } else {
+    parsed.warnings.push('Indeed job-detail URL was not detected; generic URL retained.');
+  }
+
+  parsed.parserName = 'parseIndeedJob';
+  return parsed;
 }
 
 /**
@@ -409,6 +480,19 @@ function chooseJobOpsJobUrl_(urls) {
   return (
     urls.find((url) => /\b(job|jobs|vacan|career|position|opportunit)/iu.test(url)) || urls[0] || ''
   );
+}
+
+/**
+ * Chooses a canonical URL belonging to one expected source domain.
+ *
+ * @param {string[]} urls
+ * @param {string} domain
+ * @returns {string}
+ */
+function chooseJobOpsSourceUrl_(urls, domain) {
+  const escapedDomain = domain.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  const expression = new RegExp(`^https?://(?:[^/]+\\.)?${escapedDomain}(?:/|$)`, 'iu');
+  return urls.find((url) => expression.test(url)) || '';
 }
 
 /**

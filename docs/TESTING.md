@@ -15,7 +15,7 @@ La validación ejecuta, en orden:
 3. Pruebas de Node.
 4. Validación estricta de `appsscript.json` y sus scopes permitidos.
 
-## Cobertura de las Fases 1 y 2
+## Cobertura de las Fases 1, 2 y 3
 
 Las pruebas verifican:
 
@@ -30,8 +30,10 @@ Las pruebas verifican:
 - Rechazo temprano antes de acceder a Google cuando faltan propiedades.
 - Dos ejecuciones completas de `setupJobOps()` con dobles locales, preservando una edición manual.
 - Normalización de HTML, espacios, tecnologías, modalidad y URLs canónicas.
-- Deduplicación exacta sin fusiones difusas por empresa o cargo.
-- Parser genérico para una fuente configurada.
+- Deduplicación exacta por Message ID, URL canónica o fuente e ID de vacante, sin fusiones difusas por empresa o cargo.
+- Unión de una segunda fuente en `ALL_SOURCES`, preservando estado, fechas y notas manuales.
+- Parser específico de LinkedIn y selección segura del parser de Indeed.
+- Parser genérico para una fuente configurada o fuente sin fixture específico.
 - Parser de reclutador con encabezados originales de un reenvío tipo Hotmail/Outlook.
 - Error estable para una alerta candidata sin datos mínimos.
 - Dry run sin cambios en Sheets ni etiquetas.

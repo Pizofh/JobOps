@@ -113,7 +113,7 @@ const JOBOPS_PRIORITIES = Object.freeze(['HIGH', 'REVIEW', 'OPTIONAL', 'LOW']);
 const JOBOPS_MATCH_TYPES = Object.freeze(['KEYWORD', 'REGEX', 'PHRASE']);
 const JOBOPS_SCORING_CONTEXTS = Object.freeze(['ANY', 'REQUIRED', 'PREFERRED', 'NEGATIVE']);
 
-const JOBOPS_PARSER_VERSION = '1.0.0';
+const JOBOPS_PARSER_VERSION = '1.1.0';
 const JOBOPS_TRACKING_QUERY_PARAMETERS = Object.freeze([
   'utm_source',
   'utm_medium',

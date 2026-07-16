@@ -28,7 +28,8 @@ Los entrypoints de triggers, digest, scoring y estados siguen inertes hasta su f
 - Busca hasta `MAX_MESSAGES_PER_RUN` candidatos dentro de `LOOKBACK_DAYS`.
 - Reconoce remitentes configurados en `Sources` y oportunidades de reclutadores solo con señales positivas y técnicas.
 - Lee encabezados originales `From/De` y `Subject/Asunto` en mensajes reenviados, por lo que el correo profesional puede ser Hotmail/Outlook y Gmail puede quedar como buzón técnico.
-- Elimina parámetros de rastreo conocidos de las URLs y deduplica solo por identificadores exactos: Gmail Message ID o URL canónica.
+- Elimina parámetros de rastreo conocidos de las URLs y deduplica solo por identificadores exactos: Gmail Message ID, URL canónica o combinación de fuente e ID de vacante.
+- Cuando una misma URL llega desde otra fuente, conserva la fila inicial, agrega la fuente a `ALL_SOURCES` y completa únicamente datos del sistema que estuvieran vacíos o fueran desconocidos. Nunca reemplaza `STATUS`, fechas manuales ni `NOTES`.
 - Escribe nuevas filas y errores por lotes. Un parser fallido no detiene los demás mensajes.
 - No guarda el cuerpo completo del correo ni lo escribe en los logs.
 

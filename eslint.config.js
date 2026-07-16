@@ -61,6 +61,7 @@ module.exports = [
         extractJobOpsTechnologies_: 'readonly',
         extractJobOpsUrls_: 'readonly',
         finalizeJobOpsThreadLabels_: 'readonly',
+        findJobOpsDuplicateMatch_: 'readonly',
         foldJobOpsText_: 'readonly',
         getJobOpsColumnNumber_: 'readonly',
         getJobOpsScriptPropertyErrors_: 'readonly',
@@ -68,6 +69,7 @@ module.exports = [
         isDuplicateJobOpsCandidate_: 'readonly',
         jobOpsHtmlToText_: 'readonly',
         markJobOpsThreadsProcessing_: 'readonly',
+        mergeJobOpsDuplicateRecord_: 'readonly',
         normalizeAndValidateJobOpsConfig_: 'readonly',
         normalizeJobOpsMultilineText_: 'readonly',
         normalizeJobOpsSingleLineText_: 'readonly',
@@ -87,6 +89,7 @@ module.exports = [
         runJobOpsConfigurationValidation_: 'readonly',
         runJobOpsSetup_: 'readonly',
         setupJobOpsSpreadsheet_: 'readonly',
+        updateJobOpsDuplicateJobRecords_: 'readonly',
       },
     },
     linterOptions: {

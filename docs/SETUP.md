@@ -35,7 +35,7 @@ Nunca confirmes `.clasp.json`, credenciales, IDs privados, correos reales, CV ni
 2. Autoriza los permisos de Google Sheets y Gmail solicitados.
 3. Comprueba que existan las siete hojas y las cuatro etiquetas `Jobs/*`.
 4. Ejecuta `validateJobOpsConfiguration()`; debe devolver `valid: true`.
-5. Después de desplegar la Fase 2, ejecuta `dryRunIngestion()` y revisa los contadores.
+5. Después de desplegar la Fase 3, ejecuta `dryRunIngestion()` y revisa los contadores.
 6. Ejecuta `ingestJobs()` solo después de validar ese resultado.
 
 La primera ejecución inserta encabezados y filas iniciales. Las siguientes ejecuciones agregan únicamente elementos faltantes; no reemplazan claves de configuración, notas ni otros valores existentes. Un encabezado incompatible produce `CONFIGURATION_ERROR` antes de sobrescribirlo.

@@ -25,7 +25,7 @@ function defaultSources(context) {
   ]);
 }
 
-test('generic parser normalizes a configured platform alert', () => {
+test('LinkedIn parser normalizes a configured platform alert with its specific parser', () => {
   const context = loadJobOpsContext();
   const parsed = context.parseJobOpsMessage_(
     fixture('generic/linkedin-alert.json'),
@@ -38,8 +38,8 @@ test('generic parser normalizes a configured platform alert', () => {
   assert.equal(parsed.workMode, 'REMOTE');
   assert.equal(parsed.jobUrl, 'https://www.linkedin.com/jobs/view/123456?currentJobId=123456');
   assert.equal(parsed.sourceJobId, '123456');
+  assert.equal(parsed.parserName, 'parseLinkedInJob');
   assert.ok(Array.from(parsed.requiredTechnologies).includes('Terraform'));
-  assert.ok(parsed.warnings.some((warning) => warning.includes('generic fallback')));
 });
 
 test('recruiter parser reads original headers from a forwarded Hotmail message', () => {
@@ -59,6 +59,19 @@ test('recruiter parser reads original headers from a forwarded Hotmail message',
 });
 
 test('malformed candidate throws a stable missing-field error', () => {
+  const context = loadJobOpsContext();
+
+  assert.throws(
+    () =>
+      context.parseJobOpsMessage_(
+        fixture('malformed/indeed-missing-fields.json'),
+        defaultSources(context),
+      ),
+    (error) => error.code === 'MISSING_REQUIRED_FIELD',
+  );
+});
+
+test('Indeed parser is selected before rejecting an alert with no vacancy fields', () => {
   const context = loadJobOpsContext();
 
   assert.throws(

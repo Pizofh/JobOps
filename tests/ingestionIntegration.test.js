@@ -69,3 +69,45 @@ test('ingestion dry run is immutable and real ingestion isolates message errors'
   assert.equal(rerun.createdJobs, 0);
   assert.equal(jobsSheet.getLastRow(), 3);
 });
+
+test('a later exact URL enriches the stored job and preserves manual spreadsheet fields', () => {
+  const linkedIn = fixture('generic/linkedin-alert.json');
+  const services = createFakeGoogleServices({
+    gmailThreads: [{ threadId: linkedIn.threadId, messages: [linkedIn] }],
+  });
+  const context = loadJobOpsContext(services.globals);
+  context.setupJobOps();
+  context.ingestJobs();
+
+  const jobsSheet = services.spreadsheet.getSheetByName('Jobs');
+  const headers = jobsSheet.getDataRange().getValues()[0];
+  jobsSheet.getRange(2, headers.indexOf('STATUS') + 1).setValues([['APPLIED']]);
+  jobsSheet.getRange(2, headers.indexOf('APPLIED_DATE') + 1).setValues([['2026-07-15']]);
+  jobsSheet.getRange(2, headers.indexOf('FOLLOW_UP_DATE') + 1).setValues([['2026-07-22']]);
+  jobsSheet.getRange(2, headers.indexOf('NOTES') + 1).setValues([['Manual review note']]);
+
+  const message = services.threads[0].messages[0].data;
+  Object.assign(message, {
+    subject: 'DevOps Engineer opportunity at Acme Labs',
+    from: 'Ana Recruiter <ana@talent.example>',
+    date: new Date('2026-07-16T14:30:00.000Z'),
+    plainBody:
+      'Position: DevOps Engineer\nCompany: Acme Labs\nLocation: Bogota, Colombia\nRemote role using Linux, Docker and Terraform.\nApply: https://www.linkedin.com/jobs/view/123456?currentJobId=123456',
+    messageId: 'recruiter-duplicate-message-001',
+  });
+  services.threads[0].labelNames.clear();
+
+  const result = context.ingestJobs();
+  const values = jobsSheet.getDataRange().getValues();
+  const row = values[1];
+
+  assert.equal(result.createdJobs, 0);
+  assert.equal(result.duplicates, 1);
+  assert.equal(jobsSheet.getLastRow(), 2);
+  assert.equal(row[headers.indexOf('ALL_SOURCES')], 'LinkedIn, Recruiter');
+  assert.equal(row[headers.indexOf('REQUIRED_TECHNOLOGIES')], 'Linux, Docker, AWS, Terraform');
+  assert.equal(row[headers.indexOf('STATUS')], 'APPLIED');
+  assert.equal(row[headers.indexOf('APPLIED_DATE')], '2026-07-15');
+  assert.equal(row[headers.indexOf('FOLLOW_UP_DATE')], '2026-07-22');
+  assert.equal(row[headers.indexOf('NOTES')], 'Manual review note');
+});

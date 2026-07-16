@@ -470,6 +470,8 @@ function buildJobOpsJobRecord_(input, parsed, config) {
   const discoveredAt = normalizeJobOpsDate_(input.date);
   const score = parsed.detection.isRecruiter ? config.RECRUITER_SCORE_BONUS : 0;
   const deduplicationKey = buildJobOpsDeduplicationKey_({
+    source: parsed.source,
+    sourceJobId: parsed.sourceJobId,
     jobUrl: parsed.jobUrl,
     messageId,
   });
@@ -555,6 +557,45 @@ function appendJobOpsJobRecords_(spreadsheet, records) {
     JOBOPS_SHEET_HEADERS.Jobs,
     records,
   );
+}
+
+/**
+ * Updates only the existing Jobs rows that were matched by exact
+ * deduplication. Each update retains manual fields already present in the
+ * merged record and contiguous rows are written as a batch.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @param {{rowNumber: number, record: Object<string, *>}[]} targets
+ * @returns {number}
+ */
+function updateJobOpsDuplicateJobRecords_(spreadsheet, targets) {
+  if (targets.length === 0) {
+    return 0;
+  }
+
+  const sheet = getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.JOBS);
+  const headers = JOBOPS_SHEET_HEADERS.Jobs;
+  const sortedTargets = targets.slice().sort((first, second) => first.rowNumber - second.rowNumber);
+  const batches = [];
+
+  for (const target of sortedTargets) {
+    const previousBatch = batches[batches.length - 1];
+    if (
+      !previousBatch ||
+      previousBatch.startRow + previousBatch.records.length !== target.rowNumber
+    ) {
+      batches.push({ startRow: target.rowNumber, records: [target.record] });
+    } else {
+      previousBatch.records.push(target.record);
+    }
+  }
+
+  for (const batch of batches) {
+    const values = batch.records.map((record) => headers.map((header) => record[header] ?? ''));
+    sheet.getRange(batch.startRow, 1, values.length, headers.length).setValues(values);
+  }
+
+  return sortedTargets.length;
 }
 
 /**
