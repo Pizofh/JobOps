@@ -1,0 +1,9 @@
+{
+  "subject": "Your job alert",
+  "from": "Indeed Jobs <alerts@indeed.com>",
+  "date": "2026-07-14T16:30:00.000Z",
+  "plainBody": "We found something that may interest you, but this sample has no structured vacancy data.",
+  "htmlBody": "",
+  "messageId": "malformed-message-001",
+  "threadId": "malformed-thread-001"
+}

@@ -1,0 +1,9 @@
+{
+  "subject": "Fwd: Professional opportunity",
+  "from": "Professional Inbox <professional@outlook.example>",
+  "date": "2026-07-14T15:30:00.000Z",
+  "plainBody": "---------- Forwarded message ---------\nFrom: Ana Recruiter <ana@talent.example>\nSubject: DevOps Engineer opportunity at Nube Corp\nPosition: DevOps Engineer\nCompany: Nube Corp\nLocation: Colombia - Remote\nSalary: USD 2500 - 3200 monthly\nWe need Linux, Kubernetes, CI/CD and Terraform experience.\nApply: https://careers.nube.example/jobs/devops-778?ref=recruiter",
+  "htmlBody": "",
+  "messageId": "recruiter-message-001",
+  "threadId": "recruiter-thread-001"
+}

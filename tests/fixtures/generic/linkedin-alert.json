@@ -1,0 +1,9 @@
+{
+  "subject": "Job alert: DevOps Engineer at Acme Labs",
+  "from": "LinkedIn Jobs <alerts@linkedin.com>",
+  "date": "2026-07-14T14:30:00.000Z",
+  "plainBody": "Location: Bogota, Colombia\nWork mode: Remote\nTechnologies: Linux, Docker, AWS and Terraform\nExperience: 3+ years\nView job: https://www.linkedin.com/jobs/view/123456?utm_source=email&currentJobId=123456",
+  "htmlBody": "",
+  "messageId": "generic-message-001",
+  "threadId": "generic-thread-001"
+}

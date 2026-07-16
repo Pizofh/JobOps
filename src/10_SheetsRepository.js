@@ -425,3 +425,221 @@ function getJobOpsSheetSchemaErrors_(spreadsheet) {
 
   return errors;
 }
+
+/**
+ * Loads enabled source definitions once per ingestion run.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @returns {Object[]}
+ */
+function readJobOpsSourceDefinitions_(spreadsheet) {
+  const sheet = spreadsheet.getSheetByName(JOBOPS_SHEET_NAMES.SOURCES);
+  if (!sheet) {
+    throw createJobOpsError_(
+      JOBOPS_ERROR_CODES.CONFIGURATION,
+      `Missing sheet ${JOBOPS_SHEET_NAMES.SOURCES}. Run setupJobOps first.`,
+    );
+  }
+  return parseJobOpsSourceDefinitions_(sheet.getDataRange().getValues());
+}
+
+/**
+ * Loads exact deduplication identifiers from Jobs in one read.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @returns {{messageIds: Set<string>, keys: Set<string>, urls: Set<string>}}
+ */
+function readJobOpsDeduplicationIndex_(spreadsheet) {
+  const sheet = getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.JOBS);
+  const rowCount = Math.max(sheet.getLastRow() - 1, 0);
+  const headers = JOBOPS_SHEET_HEADERS.Jobs;
+  const rows = rowCount > 0 ? sheet.getRange(2, 1, rowCount, headers.length).getValues() : [];
+  return buildJobOpsDeduplicationIndex_(headers, rows);
+}
+
+/**
+ * Maps a parsed candidate to the immutable initial Jobs row.
+ *
+ * @param {Object} input
+ * @param {Object} parsed
+ * @param {Object} config
+ * @returns {Object<string, *>}
+ */
+function buildJobOpsJobRecord_(input, parsed, config) {
+  const messageId = normalizeJobOpsSingleLineText_(input.messageId);
+  const discoveredAt = normalizeJobOpsDate_(input.date);
+  const score = parsed.detection.isRecruiter ? config.RECRUITER_SCORE_BONUS : 0;
+  const deduplicationKey = buildJobOpsDeduplicationKey_({
+    jobUrl: parsed.jobUrl,
+    messageId,
+  });
+
+  return {
+    JOB_ID: buildJobOpsJobId_(messageId),
+    DISCOVERED_AT: discoveredAt,
+    LAST_UPDATED_AT: discoveredAt,
+    SOURCE: parsed.source,
+    ALL_SOURCES: parsed.source,
+    SOURCE_JOB_ID: parsed.sourceJobId,
+    COMPANY: parsed.company,
+    POSITION: parsed.position,
+    LOCATION: parsed.location,
+    WORK_MODE: parsed.workMode,
+    JOB_URL: parsed.jobUrl,
+    ROLE_FAMILY: 'UNCLASSIFIED',
+    MATCH_SCORE: score,
+    PRIORITY: getJobOpsPriorityForScore_(score, config),
+    RECOMMENDED_CV: 'CV_TO_CREATE',
+    CV_LINK: '',
+    SALARY: parsed.salary,
+    EXPERIENCE_REQUESTED: parsed.experienceRequested,
+    REQUIRED_TECHNOLOGIES: parsed.requiredTechnologies.join(', '),
+    STRONG_MATCHES: parsed.detection.isRecruiter
+      ? `Recruiter ${score >= 0 ? '+' : ''}${score}`
+      : '',
+    RISK_FLAGS: '',
+    RECRUITER_NAME: parsed.recruiterName,
+    RECRUITER_EMAIL: parsed.recruiterEmail,
+    GMAIL_MESSAGE_ID: messageId,
+    GMAIL_THREAD_ID: normalizeJobOpsSingleLineText_(input.threadId),
+    DEDUPLICATION_KEY: deduplicationKey,
+    PARSER: parsed.parserName,
+    PARSER_VERSION: parsed.parserVersion,
+    STATUS: 'NEW',
+    APPLIED_DATE: '',
+    FOLLOW_UP_DATE: '',
+    NOTES: parsed.warnings.length > 0 ? `Parser: ${parsed.warnings.join(' ')}`.slice(0, 500) : '',
+  };
+}
+
+/**
+ * Creates a privacy-limited ParsingErrors row.
+ *
+ * @param {Object} input
+ * @param {Object} diagnostic
+ * @param {Error} error
+ * @returns {Object<string, *>}
+ */
+function buildJobOpsParsingErrorRecord_(input, diagnostic, error) {
+  return {
+    TIMESTAMP: new Date(),
+    GMAIL_MESSAGE_ID: normalizeJobOpsSingleLineText_(input.messageId),
+    SENDER: normalizeJobOpsSingleLineText_(diagnostic.effectiveFrom || input.from).slice(0, 300),
+    SUBJECT: normalizeJobOpsSingleLineText_(diagnostic.effectiveSubject || input.subject).slice(
+      0,
+      500,
+    ),
+    DETECTED_SOURCE: normalizeJobOpsSingleLineText_(diagnostic.source),
+    PARSER: normalizeJobOpsSingleLineText_(diagnostic.parserName),
+    ERROR_TYPE: normalizeJobOpsSingleLineText_(
+      error.code || error.name || JOBOPS_ERROR_CODES.PARSER,
+    ),
+    ERROR_MESSAGE: normalizeJobOpsSingleLineText_(error.message).slice(0, 500),
+    RETRY_COUNT: 0,
+    RESOLVED: false,
+    NOTES: '',
+  };
+}
+
+/**
+ * Appends new Jobs in a single Sheets write.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @param {Object<string, *>[]} records
+ * @returns {number}
+ */
+function appendJobOpsJobRecords_(spreadsheet, records) {
+  return appendJobOpsRecords_(
+    spreadsheet,
+    JOBOPS_SHEET_NAMES.JOBS,
+    JOBOPS_SHEET_HEADERS.Jobs,
+    records,
+  );
+}
+
+/**
+ * Appends parsing diagnostics in a single Sheets write.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @param {Object<string, *>[]} records
+ * @returns {number}
+ */
+function appendJobOpsParsingErrorRecords_(spreadsheet, records) {
+  return appendJobOpsRecords_(
+    spreadsheet,
+    JOBOPS_SHEET_NAMES.PARSING_ERRORS,
+    JOBOPS_SHEET_HEADERS.ParsingErrors,
+    records,
+  );
+}
+
+/**
+ * Generic non-destructive append helper.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @param {string} sheetName
+ * @param {string[]} headers
+ * @param {Object<string, *>[]} records
+ * @returns {number}
+ */
+function appendJobOpsRecords_(spreadsheet, sheetName, headers, records) {
+  if (records.length === 0) {
+    return 0;
+  }
+
+  const sheet = getRequiredJobOpsSheet_(spreadsheet, sheetName);
+  const startRow = sheet.getLastRow() + 1;
+  const rows = records.map((record) => headers.map((header) => record[header] ?? ''));
+  ensureJobOpsSheetSize_(sheet, startRow + rows.length - 1, headers.length);
+  sheet.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
+  return rows.length;
+}
+
+/**
+ * Returns a required sheet with a stable configuration error.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @param {string} sheetName
+ * @returns {GoogleAppsScript.Spreadsheet.Sheet}
+ */
+function getRequiredJobOpsSheet_(spreadsheet, sheetName) {
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    throw createJobOpsError_(
+      JOBOPS_ERROR_CODES.CONFIGURATION,
+      `Missing sheet ${sheetName}. Run setupJobOps first.`,
+    );
+  }
+  return sheet;
+}
+
+/**
+ * Normalizes message dates without accepting an invalid timestamp.
+ *
+ * @param {*} value
+ * @returns {Date}
+ */
+function normalizeJobOpsDate_(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+/**
+ * Applies the editable priority thresholds to the Phase 2 base score.
+ *
+ * @param {number} score
+ * @param {Object} config
+ * @returns {string}
+ */
+function getJobOpsPriorityForScore_(score, config) {
+  if (score >= config.HIGH_PRIORITY_THRESHOLD) {
+    return 'HIGH';
+  }
+  if (score >= config.REVIEW_THRESHOLD) {
+    return 'REVIEW';
+  }
+  if (score >= config.OPTIONAL_THRESHOLD) {
+    return 'OPTIONAL';
+  }
+  return 'LOW';
+}

@@ -243,15 +243,82 @@ class FakeBuilder {
   }
 }
 
-function createFakeGoogleServices() {
+class FakeGmailMessage {
+  constructor(data) {
+    this.data = { ...data, date: new Date(data.date) };
+  }
+
+  getSubject() {
+    return this.data.subject;
+  }
+
+  getFrom() {
+    return this.data.from;
+  }
+
+  getDate() {
+    return this.data.date;
+  }
+
+  getPlainBody() {
+    return this.data.plainBody || '';
+  }
+
+  getBody() {
+    return this.data.htmlBody || '';
+  }
+
+  getId() {
+    return this.data.messageId;
+  }
+}
+
+class FakeGmailThread {
+  constructor(data) {
+    this.id = data.threadId;
+    this.messages = data.messages.map((message) => new FakeGmailMessage(message));
+    this.labelNames = new Set();
+  }
+
+  getId() {
+    return this.id;
+  }
+}
+
+class FakeGmailLabel {
+  constructor(name) {
+    this.name = name;
+  }
+
+  addToThreads(threads) {
+    for (const thread of threads) {
+      thread.labelNames.add(this.name);
+    }
+    return this;
+  }
+
+  removeFromThreads(threads) {
+    for (const thread of threads) {
+      thread.labelNames.delete(this.name);
+    }
+    return this;
+  }
+}
+
+function createFakeGoogleServices(options = {}) {
   const spreadsheetId = 'fakeSpreadsheetId1234567890';
   const userEmail = 'user@example.test';
   const spreadsheet = new FakeSpreadsheet();
   const labels = new Map();
+  const threads = (options.gmailThreads || []).map((thread) => new FakeGmailThread(thread));
+  const logs = [];
+  let lockHeld = false;
 
   return {
     spreadsheet,
     labels,
+    threads,
+    logs,
     globals: {
       PropertiesService: {
         getScriptProperties() {
@@ -275,13 +342,47 @@ function createFakeGoogleServices() {
         },
       },
       GmailApp: {
+        search(_query, start, maximum) {
+          return threads
+            .filter(
+              (thread) =>
+                !['Jobs/Processed', 'Jobs/Failed', 'Jobs/Processing'].some((name) =>
+                  thread.labelNames.has(name),
+                ),
+            )
+            .slice(start, start + maximum);
+        },
+        getMessagesForThreads(requestedThreads) {
+          return requestedThreads.map((thread) => thread.messages.slice());
+        },
         getUserLabelByName(name) {
           return labels.get(name) || null;
         },
         createLabel(name) {
-          const label = { name };
+          const label = new FakeGmailLabel(name);
           labels.set(name, label);
           return label;
+        },
+      },
+      LockService: {
+        getScriptLock() {
+          return {
+            tryLock() {
+              if (lockHeld) {
+                return false;
+              }
+              lockHeld = true;
+              return true;
+            },
+            releaseLock() {
+              lockHeld = false;
+            },
+          };
+        },
+      },
+      Logger: {
+        log(message) {
+          logs.push(message);
         },
       },
     },

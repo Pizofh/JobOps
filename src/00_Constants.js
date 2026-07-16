@@ -113,6 +113,71 @@ const JOBOPS_PRIORITIES = Object.freeze(['HIGH', 'REVIEW', 'OPTIONAL', 'LOW']);
 const JOBOPS_MATCH_TYPES = Object.freeze(['KEYWORD', 'REGEX', 'PHRASE']);
 const JOBOPS_SCORING_CONTEXTS = Object.freeze(['ANY', 'REQUIRED', 'PREFERRED', 'NEGATIVE']);
 
+const JOBOPS_PARSER_VERSION = '1.0.0';
+const JOBOPS_TRACKING_QUERY_PARAMETERS = Object.freeze([
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'trk',
+  'trackingid',
+  'ref',
+  'source',
+]);
+const JOBOPS_TECHNOLOGY_NAMES = Object.freeze([
+  'Linux',
+  'RHEL',
+  'CI/CD',
+  'Docker',
+  'Kubernetes',
+  'AWS',
+  'Azure',
+  'GCP',
+  'Terraform',
+  'Ansible',
+  'Prometheus',
+  'Grafana',
+  'Python',
+  'JavaScript',
+  'Node.js',
+  'GitHub Actions',
+  'Jenkins',
+  'GitLab CI',
+  'IAM',
+  'SQL',
+]);
+const JOBOPS_TECHNICAL_ROLE_SIGNALS = Object.freeze([
+  'devops',
+  'platform',
+  'site reliability',
+  'sre',
+  'cloud',
+  'release',
+  'ci/cd',
+  'application support',
+  'production support',
+  'backend',
+  'developer',
+  'engineer',
+  'ingeniero',
+  'desarrollador',
+  'iam',
+  'devsecops',
+]);
+const JOBOPS_RECRUITER_NEGATIVE_SIGNALS = Object.freeze([
+  'newsletter',
+  'course',
+  'curso',
+  'promotion',
+  'promoción',
+  'invoice',
+  'factura',
+  'webinar',
+  'digest',
+  'sale',
+  'descuento',
+]);
+
 const JOBOPS_GMAIL_LABEL_NAMES = Object.freeze([
   'Jobs/Processed',
   'Jobs/Failed',
@@ -428,6 +493,11 @@ const JOBOPS_CONDITIONAL_COLORS = Object.freeze({
 
 const JOBOPS_ERROR_CODES = Object.freeze({
   CONFIGURATION: 'CONFIGURATION_ERROR',
+  SOURCE_NOT_DETECTED: 'SOURCE_NOT_DETECTED',
+  PARSER: 'PARSER_ERROR',
+  MISSING_REQUIRED_FIELD: 'MISSING_REQUIRED_FIELD',
   SHEETS_WRITE: 'SHEETS_WRITE_ERROR',
   GMAIL_LABEL: 'GMAIL_LABEL_ERROR',
+  DUPLICATE_MESSAGE: 'DUPLICATE_MESSAGE',
+  INGESTION_LOCK: 'INGESTION_LOCK_ERROR',
 });
