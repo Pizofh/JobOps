@@ -1,0 +1,4 @@
+interface:
+  display_name: 'JobOps Engineering'
+  short_description: 'Implement and maintain JobOps safely'
+  default_prompt: 'Use $jobops to implement the next scoped JobOps task safely.'

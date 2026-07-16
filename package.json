@@ -1,0 +1,25 @@
+{
+  "name": "jobops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal job-search operations system for Google Apps Script",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "lint": "eslint src tests scripts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --test",
+    "validate:manifest": "node scripts/validate-manifest.js",
+    "ci": "npm run lint && npm run format:check && npm run test && npm run validate:manifest",
+    "push": "clasp push",
+    "open": "clasp open-script"
+  },
+  "devDependencies": {
+    "@google/clasp": "3.3.0",
+    "eslint": "10.6.0",
+    "prettier": "3.9.5"
+  }
+}
