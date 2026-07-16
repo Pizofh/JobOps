@@ -1,8 +1,8 @@
 # JobOps
 
-JobOps es un sistema personal y privado para organizar una búsqueda de empleo desde Google Apps Script, Gmail y Google Sheets. Este repositorio contiene únicamente la **Fase 0**: estructura, herramientas de calidad, manifest seguro y entrypoints globales inertes.
+JobOps es un sistema personal y privado para organizar una búsqueda de empleo desde Google Apps Script, Gmail y Google Sheets. El repositorio contiene la estructura de desarrollo y la **Fase 1** de configuración inicial.
 
-Todavía no hay acceso real a Gmail, Sheets, PropertiesService ni MailApp. Ningún entrypoint modifica datos o envía mensajes.
+`setupJobOps()` crea de forma no destructiva las hojas, datos configurables, validaciones, formato y etiquetas de Gmail. Todavía no lee mensajes, instala triggers, ingiere vacantes ni envía correos.
 
 ## Requisitos locales
 
@@ -42,6 +42,10 @@ npm run ci
 
 `.claspignore` limita el despliegue a `appsscript.json` y los archivos JavaScript directamente dentro de `src/`. El despliegue es siempre manual y GitHub Actions nunca ejecuta `clasp push`.
 
+### Por qué los archivos locales usan `.js`
+
+Apps Script representa el código de servidor como archivos de script y su editor suele mostrarlos como `.gs`. `clasp` admite `.js` localmente; `.clasp.json.example` fija `scriptExtensions: [".js"]`. Esto permite ejecutar las mismas fuentes con Node, ESLint y las pruebas sin compilación ni conversión manual.
+
 ## Documentación
 
 - [Plan maestro y PRD](docs/PRD.md)
@@ -51,4 +55,4 @@ npm run ci
 
 ## Estado
 
-Fase activa: **Fase 0 — Repositorio y reglas de trabajo**. Las fases funcionales posteriores no forman parte de este cambio.
+Fase completada: **Fase 1 — Configuración inicial**. La ingestión de Gmail y los parsers pertenecen a la Fase 2 y todavía no están implementados.

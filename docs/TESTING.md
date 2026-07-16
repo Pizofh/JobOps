@@ -13,10 +13,21 @@ La validación ejecuta, en orden:
 1. ESLint sobre `src`, `tests` y `scripts`.
 2. Comprobación de formato con Prettier.
 3. Pruebas de Node.
-4. Validación estricta de `appsscript.json`.
+4. Validación estricta de `appsscript.json` y sus scopes permitidos.
 
-## Prueba de humo de la Fase 0
+## Cobertura de la Fase 1
 
-La prueba carga `src/14_Entrypoints.js` en un contexto aislado, verifica los ocho nombres globales y confirma que llamarlos no devuelve valores ni requiere servicios de Google.
+Las pruebas verifican:
 
-Las futuras integraciones no intentarán probar el funcionamiento interno de GmailApp, SpreadsheetApp o MailApp localmente. La lógica pura deberá probarse sin Google y los adaptadores pequeños se verificarán de forma manual y controlada.
+- Carga de scripts clásicos sin efectos laterales al cargar archivos.
+- Ocho entrypoints globales.
+- Tipado y validación de `Config`.
+- Validación de Script Properties y estados.
+- Integridad de los esquemas y datos iniciales.
+- Rechazo de encabezados incompatibles.
+- Selección idempotente de filas iniciales.
+- Creación idempotente de etiquetas.
+- Rechazo temprano antes de acceder a Google cuando faltan propiedades.
+- Dos ejecuciones completas de `setupJobOps()` con dobles locales, preservando una edición manual.
+
+Los dobles no intentan reproducir el funcionamiento interno de Google. Comprueban únicamente las decisiones y llamadas de JobOps. La integración real debe verificarse manualmente en un spreadsheet de prueba controlado.

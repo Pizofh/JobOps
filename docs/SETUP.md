@@ -1,20 +1,48 @@
 # Configuración
 
-## Alcance actual
+## Requisitos
 
-La Fase 0 prepara el repositorio local. No autoriza ni ejecuta accesos a Gmail, Google Sheets, PropertiesService o MailApp.
+- Node.js 22.13 o posterior y npm 10 o posterior.
+- Un proyecto independiente de Google Apps Script.
+- Un spreadsheet privado y vacío o con hojas JobOps compatibles.
+- Acceso a la cuenta de Gmail donde se crearán las etiquetas.
 
 ## Preparación local
 
-1. Instala Node.js 22.13 o posterior y npm 10 o posterior.
-2. Ejecuta `npm ci` desde la raíz del repositorio.
-3. Ejecuta `npm run ci`.
+1. Ejecuta `npm ci` desde la raíz del repositorio.
+2. Ejecuta `npm run ci`.
+3. Copia `.clasp.json.example` como `.clasp.json`.
+4. Sustituye el placeholder por el Script ID privado.
+5. Ejecuta `npx clasp show-file-status` y confirma que solo aparecen `appsscript.json` y `src/*.js`.
+6. Autoriza `clasp` y ejecuta `npm run push` manualmente.
 
-## Conexión manual futura con Apps Script
+Los archivos se mantienen como `.js` localmente. Apps Script los recibe como código de servidor; no es necesario renombrarlos a `.gs`.
 
-1. Copia `.clasp.json.example` como `.clasp.json`.
-2. Reemplaza el placeholder con el Script ID privado.
-3. Autoriza `clasp` manualmente cuando corresponda.
-4. Revisa `npx clasp show-file-status` antes de cualquier `npm run push`.
+## Script Properties obligatorias
 
-No confirmes `.clasp.json`, credenciales, IDs privados, correos reales, CV ni fixtures sin anonimizar. El despliegue nunca se realiza desde CI.
+En **Project Settings → Script Properties** agrega:
+
+| Key              | Value                                                    |
+| ---------------- | -------------------------------------------------------- |
+| `SPREADSHEET_ID` | ID del spreadsheet privado, no su URL completa.          |
+| `USER_EMAIL`     | Correo que recibirá los resúmenes en una fase posterior. |
+
+Nunca confirmes `.clasp.json`, credenciales, IDs privados, correos reales, CV ni fixtures sin anonimizar.
+
+## Inicialización
+
+1. Ejecuta `setupJobOps()` desde el editor de Apps Script.
+2. Autoriza los permisos de Google Sheets y Gmail solicitados.
+3. Comprueba que existan las siete hojas y las cuatro etiquetas `Jobs/*`.
+4. Ejecuta `validateJobOpsConfiguration()`; debe devolver `valid: true`.
+
+La primera ejecución inserta encabezados y filas iniciales. Las siguientes ejecuciones agregan únicamente elementos faltantes; no reemplazan claves de configuración, notas ni otros valores existentes. Un encabezado incompatible produce `CONFIGURATION_ERROR` antes de sobrescribirlo.
+
+## Permisos de la Fase 1
+
+El manifest declara únicamente:
+
+- Google Sheets, para abrir y preparar el spreadsheet configurado.
+- Gmail, porque `GmailApp` requiere ese alcance para consultar y crear etiquetas.
+
+La Fase 1 no lee mensajes, no envía correo y no instala triggers.

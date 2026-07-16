@@ -1,19 +1,25 @@
 /* exported setupJobOps, installJobOpsTriggers, ingestJobs, sendDailyDigest, handleStatusEdit, rescoreJobs, dryRunIngestion, validateJobOpsConfiguration */
 
-/** Phase 0 safe no-op. */
-function setupJobOps() {}
+/**
+ * Initializes the Phase 1 Sheets environment and Gmail labels.
+ *
+ * @returns {Object}
+ */
+function setupJobOps() {
+  return runJobOpsSetup_();
+}
 
-/** Phase 0 safe no-op. */
+/** Reserved for the trigger phase. */
 function installJobOpsTriggers() {}
 
-/** Phase 0 safe no-op. */
+/** Reserved for the ingestion phase. */
 function ingestJobs() {}
 
-/** Phase 0 safe no-op. */
+/** Reserved for the digest phase. */
 function sendDailyDigest() {}
 
 /**
- * Phase 0 safe no-op.
+ * Reserved for the status workflow phase.
  *
  * @param {Object} event Future installable onEdit event.
  */
@@ -21,11 +27,17 @@ function handleStatusEdit(event) {
   void event;
 }
 
-/** Phase 0 safe no-op. */
+/** Reserved for the scoring phase. */
 function rescoreJobs() {}
 
-/** Phase 0 safe no-op. */
+/** Reserved for the ingestion phase. */
 function dryRunIngestion() {}
 
-/** Phase 0 safe no-op. */
-function validateJobOpsConfiguration() {}
+/**
+ * Validates Script Properties, required sheets and editable configuration.
+ *
+ * @returns {Object}
+ */
+function validateJobOpsConfiguration() {
+  return runJobOpsConfigurationValidation_();
+}

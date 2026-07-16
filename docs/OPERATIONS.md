@@ -1,14 +1,21 @@
 # Operación
 
-## Estado de la Fase 0
+## Funciones disponibles
 
-Los ocho entrypoints globales existen para que Apps Script pueda cargarlos, pero son funciones intencionalmente inertes. En esta fase no hay ingestión, configuración de hojas, triggers, resumen, cambios de estado ni rescoring operativos.
+- `setupJobOps()`: crea o completa de forma no destructiva hojas, encabezados, configuración inicial, validaciones, formato y etiquetas.
+- `validateJobOpsConfiguration()`: valida Script Properties, estructura de hojas y valores de `Config` sin exponer IDs privados.
 
-## Rutina disponible
+Los demás entrypoints siguen inertes hasta su fase correspondiente.
 
-- Ejecutar `npm run ci` antes de integrar cambios.
-- Revisar que `.clasp.json` siga ignorado y que no existan credenciales versionadas.
-- Usar `npx clasp show-file-status` para confirmar la lista de despliegue.
-- Desplegar únicamente de forma manual y solo cuando una fase posterior lo autorice.
+## Ejecución segura
 
-Las instrucciones de operación diaria se ampliarán cuando exista comportamiento funcional, sin adelantar implementaciones de fases posteriores.
+1. Ejecuta `validateJobOpsConfiguration()` después de editar `Config`.
+2. Si falta una fila inicial, vuelve a ejecutar `setupJobOps()`; solo se agregará la clave faltante.
+3. Si aparece `CONFIGURATION_ERROR` por un encabezado incompatible, corrige manualmente el encabezado. El setup no lo reemplazará.
+4. Revisa `npx clasp show-file-status` antes de cada despliegue manual.
+
+## Valores iniciales editables
+
+`DIGEST_HOUR` comienza en `8` y `RECRUITER_SCORE_BONUS` en `5`. Son decisiones iniciales, no valores permanentes: pueden cambiarse en `Config` sin modificar JavaScript.
+
+No existen todavía ingestión, triggers, digest, seguimiento automático ni acceso al contenido de Gmail.
