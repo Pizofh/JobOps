@@ -9,8 +9,40 @@ function setupJobOps() {
   return runJobOpsSetup_();
 }
 
-/** Reserved for the trigger phase. */
-function installJobOpsTriggers() {}
+/**
+ * Installs the bounded ingestion, digest and edit triggers once.
+ *
+ * @returns {Object}
+ */
+function installJobOpsTriggers() {
+  const properties = readJobOpsScriptProperties_();
+  assertValidJobOpsScriptProperties_(properties);
+  const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+  const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
+  const handlers = new Set(
+    ScriptApp.getProjectTriggers().map((trigger) => trigger.getHandlerFunction()),
+  );
+  const created = [];
+
+  if (!handlers.has('ingestJobs')) {
+    ScriptApp.newTrigger('ingestJobs').timeBased().everyHours(1).create();
+    created.push('ingestJobs');
+  }
+  if (!handlers.has('sendDailyDigest')) {
+    ScriptApp.newTrigger('sendDailyDigest')
+      .timeBased()
+      .atHour(config.DIGEST_HOUR)
+      .everyDays(1)
+      .create();
+    created.push('sendDailyDigest');
+  }
+  if (!handlers.has('handleStatusEdit')) {
+    ScriptApp.newTrigger('handleStatusEdit').forSpreadsheet(spreadsheet).onEdit().create();
+    created.push('handleStatusEdit');
+  }
+
+  return { ok: true, created, existing: Array.from(handlers) };
+}
 
 /**
  * Ingests recent job messages, respecting Config.DRY_RUN.
@@ -21,16 +53,18 @@ function ingestJobs() {
   return runJobOpsIngestion_(false);
 }
 
-/** Reserved for the digest phase. */
-function sendDailyDigest() {}
-
 /**
- * Reserved for the status workflow phase.
+ * Sends at most one non-empty daily digest in the configured timezone.
  *
- * @param {Object} event Future installable onEdit event.
+ * @returns {Object}
  */
+function sendDailyDigest() {
+  return runJobOpsDailyDigest_();
+}
+
+/** @param {Object} event @returns {Object|undefined} */
 function handleStatusEdit(event) {
-  void event;
+  return runJobOpsStatusEdit_(event);
 }
 
 /**
@@ -249,6 +283,76 @@ function createJobOpsEvaluationContext_(spreadsheet, config) {
     cvProfiles: readJobOpsCvProfiles_(spreadsheet),
     config,
   };
+}
+
+/**
+ * Reads the current jobs and errors, then sends a digest when it has content.
+ *
+ * @returns {Object}
+ */
+function runJobOpsDailyDigest_() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) {
+    throw createJobOpsError_(
+      JOBOPS_ERROR_CODES.DIGEST,
+      'Another JobOps process is already running.',
+    );
+  }
+
+  try {
+    const properties = readJobOpsScriptProperties_();
+    assertValidJobOpsScriptProperties_(properties);
+    const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
+    if (!config.DIGEST_ENABLED) {
+      return { ok: true, sent: false, reason: 'DIGEST_DISABLED' };
+    }
+
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const dateKey = getJobOpsDateKey_(new Date(), config.TIMEZONE);
+    if (scriptProperties.getProperty('LAST_DIGEST_DATE') === dateKey) {
+      return { ok: true, sent: false, reason: 'ALREADY_SENT' };
+    }
+
+    const sections = selectJobOpsDigestSections_(
+      readJobOpsJobsForRescore_(spreadsheet).map((target) => target.record),
+      readJobOpsParsingErrorsForDigest_(spreadsheet),
+      config,
+      new Date(),
+    );
+    const digest = buildJobOpsDigest_(sections, new Date(), config.TIMEZONE);
+    if (!digest.hasContent) {
+      return { ok: true, sent: false, reason: 'NO_CONTENT' };
+    }
+
+    MailApp.sendEmail({
+      to: properties.USER_EMAIL,
+      subject: `JobOps — resumen diario ${dateKey}`,
+      htmlBody: digest.htmlBody,
+      body: digest.plainBody,
+    });
+    scriptProperties.setProperty('LAST_DIGEST_DATE', dateKey);
+    Logger.log(
+      `JobOps Phase 5: digest sent jobs=${sections.jobs.length}, recruiters=${sections.recruiters.length}, followUps=${sections.followUps.length}, errors=${sections.errors.length}`,
+    );
+    return {
+      ok: true,
+      sent: true,
+      sections: Object.fromEntries(
+        Object.entries(sections).map(([key, value]) => [key, value.length]),
+      ),
+    };
+  } catch (error) {
+    if (error && error.name === 'JobOpsError' && error.code) {
+      throw error;
+    }
+    throw createJobOpsError_(
+      JOBOPS_ERROR_CODES.DIGEST,
+      `Unable to send the daily digest: ${error.message}`,
+    );
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**

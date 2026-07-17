@@ -7,8 +7,10 @@
 - `dryRunIngestion()`: busca, detecta, normaliza y deduplica candidatos sin modificar Gmail ni Sheets.
 - `ingestJobs()`: ejecuta la ingestión real; también funciona como dry run cuando `Config.DRY_RUN` es `true`.
 - `rescoreJobs()`: recalcula familia, score, prioridad y CV para las filas existentes sin cambiar estado, fechas ni notas.
+- `installJobOpsTriggers()`: instala una ejecución horaria de ingesta, un resumen diario y el trigger de edición; no crea duplicados.
+- `sendDailyDigest()`: envía manualmente el resumen si hay contenido y aún no se envió ese día.
 
-Los entrypoints de triggers, digest y estados siguen inertes hasta su fase correspondiente.
+Los triggers se instalan únicamente al ejecutar `installJobOpsTriggers()`; no se crean durante `setupJobOps()` ni mediante CI.
 
 ## Ejecución segura
 
@@ -20,6 +22,7 @@ Los entrypoints de triggers, digest y estados siguen inertes hasta su fase corre
 6. Si aparece `CONFIGURATION_ERROR` por un encabezado incompatible, corrige manualmente el encabezado. El setup no lo reemplazará.
 7. Revisa `npx clasp show-file-status` antes de cada despliegue manual.
 8. Tras ajustar estrategia, ejecuta `rescoreJobs()` y revisa `ROLE_FAMILY`, `MATCH_SCORE`, `PRIORITY`, `RECOMMENDED_CV`, `STRONG_MATCHES` y `RISK_FLAGS`.
+9. Prueba `sendDailyDigest()` manualmente una vez que existan filas relevantes; no enviará un correo vacío.
 
 ## Valores iniciales editables
 
@@ -41,4 +44,5 @@ No necesitas decidir todavía entre DevOps/SRE y roles técnicos más accesibles
 
 Las etiquetas de `GmailApp` se aplican por hilo, no por mensaje individual. Un hilo con cualquier error queda en `Jobs/Failed`; un hilo correcto queda en `Jobs/Processed`, y las oportunidades de reclutador reciben además `Jobs/Recruiters`.
 
-No existen todavía triggers, digest, seguimiento automático, scoring completo ni aplicaciones automáticas.
+Las mejoras de endurecimiento, fixtures adicionales y revisión de permisos quedan para la Fase 6. JobOps no automatiza aplicaciones laborales.
+Al cambiar una fila a `APPLIED`, JobOps completa solo las fechas vacías de aplicación y seguimiento. Nunca envía una aplicación ni un mensaje de seguimiento.

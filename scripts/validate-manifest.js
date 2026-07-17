@@ -11,6 +11,8 @@ const allowedKeys = new Set([
 ]);
 const allowedScopes = new Set([
   'https://mail.google.com/',
+  'https://www.googleapis.com/auth/script.scriptapp',
+  'https://www.googleapis.com/auth/script.send_mail',
   'https://www.googleapis.com/auth/spreadsheets',
 ]);
 const forbiddenKeys = ['addOns', 'executionApi', 'urlFetchWhitelist', 'webapp'];
@@ -42,7 +44,7 @@ assertManifest(
   manifest.oauthScopes.length === allowedScopes.size &&
     new Set(manifest.oauthScopes).size === allowedScopes.size &&
     manifest.oauthScopes.every((scope) => allowedScopes.has(scope)),
-  'oauthScopes must contain only the Phase 1 Gmail and Sheets scopes',
+  'oauthScopes must contain only the JobOps Gmail, Sheets, trigger and mail scopes',
 );
 
 const unexpectedKeys = Object.keys(manifest).filter((key) => !allowedKeys.has(key));

@@ -502,6 +502,20 @@ function readJobOpsJobsForRescore_(spreadsheet) {
 }
 
 /**
+ * Reads ParsingErrors as named records for the privacy-limited daily digest.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @returns {Object<string, *>[]}
+ */
+function readJobOpsParsingErrorsForDigest_(spreadsheet) {
+  const sheet = getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.PARSING_ERRORS);
+  const headers = JOBOPS_SHEET_HEADERS.ParsingErrors;
+  const rowCount = Math.max(sheet.getLastRow() - 1, 0);
+  const values = rowCount > 0 ? sheet.getRange(2, 1, rowCount, headers.length).getValues() : [];
+  return values.map((row) => createJobOpsRecordFromRow_(headers, row));
+}
+
+/**
  * Writes only Phase 4 system fields in three column batches. Manual columns
  * are never read back into a write operation.
  *

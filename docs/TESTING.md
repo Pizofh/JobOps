@@ -15,7 +15,7 @@ La validación ejecuta, en orden:
 3. Pruebas de Node.
 4. Validación estricta de `appsscript.json` y sus scopes permitidos.
 
-## Cobertura de las Fases 1, 2, 3 y 4
+## Cobertura de las Fases 1, 2, 3, 4 y 5
 
 Las pruebas verifican:
 
@@ -38,6 +38,8 @@ Las pruebas verifican:
 - Score explicable con reglas positivas, negativas, de requerimiento y bono de reclutador.
 - Recomendación de CV desde `CVProfiles`.
 - `rescoreJobs()` que solo actualiza campos de evaluación y conserva los campos manuales.
+- Cálculo de fechas de aplicación y seguimiento usando días hábiles, sin sobrescribir fechas existentes.
+- Selección y renderizado de secciones del resumen diario sin incluir cuerpos de correos.
 - Parser de reclutador con encabezados originales de un reenvío tipo Hotmail/Outlook.
 - Error estable para una alerta candidata sin datos mínimos.
 - Dry run sin cambios en Sheets ni etiquetas.

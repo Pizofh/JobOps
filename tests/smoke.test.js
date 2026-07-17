@@ -22,13 +22,7 @@ test('Apps Script sources load without accessing Google services at file load ti
   }
 });
 
-test('entrypoints reserved for later phases remain inert', () => {
+test('status edit entrypoint ignores calls without a Sheets edit event', () => {
   const context = loadJobOpsContext();
-  const inertEntrypoints = ['installJobOpsTriggers', 'sendDailyDigest'];
-
-  for (const name of inertEntrypoints) {
-    assert.equal(context[name](), undefined, `${name} must remain inert`);
-  }
-
   assert.equal(context.handleStatusEdit({}), undefined);
 });
