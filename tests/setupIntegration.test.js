@@ -41,3 +41,32 @@ test('setupJobOps creates a usable environment and preserves manual edits on rer
     assert.equal(seededCount, 0);
   }
 });
+
+test('setupJobOps upgrades old scoring dropdowns before writing strategy rules', () => {
+  const services = createFakeGoogleServices();
+  const context = loadJobOpsContext(services.globals);
+  context.setupJobOps();
+
+  const sheet = services.spreadsheet.getSheetByName('ScoringRules');
+  const headers = sheet.getDataRange().getValues()[0];
+  const contextColumn = headers.indexOf('CONTEXT') + 1;
+  const oldRule = services.globals.SpreadsheetApp.newDataValidation()
+    .requireValueInList(['ANY', 'REQUIRED', 'PREFERRED', 'NEGATIVE'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet
+    .getRange(2, contextColumn, sheet.getMaxRows() - 1, 1)
+    .setDataValidations(Array.from({ length: sheet.getMaxRows() - 1 }, () => [oldRule]));
+
+  const juniorRow = sheet
+    .getDataRange()
+    .getValues()
+    .findIndex((row) => row[0] === 'BONUS_JUNIOR');
+  sheet.getRange(juniorRow + 1, 1).setValues([['']]);
+
+  assert.doesNotThrow(() => context.setupJobOps());
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(sheet.getRange(2, contextColumn).getDataValidations()[0][0].values)),
+    ['ANY', 'TITLE', 'REQUIRED', 'PREFERRED', 'NEGATIVE'],
+  );
+});

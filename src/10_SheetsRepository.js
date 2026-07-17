@@ -34,6 +34,7 @@ function setupJobOpsSpreadsheet_(spreadsheet) {
 
     ensureJobOpsSheetSize_(sheet, 2, definition.headers.length);
     summary.extendedHeaders[definition.name] = ensureJobOpsHeaders_(sheet, definition.headers);
+    applyJobOpsDataValidations_(sheet, definition.headers);
     const seedResult = upsertJobOpsStandardSeedRows_(
       sheet,
       definition.seedRows,
@@ -47,7 +48,6 @@ function setupJobOpsSpreadsheet_(spreadsheet) {
     }
 
     formatJobOpsSheet_(sheet, definition.headers);
-    applyJobOpsDataValidations_(sheet, definition.headers);
   }
 
   applyJobOpsConditionalFormatting_(spreadsheet);
@@ -412,7 +412,8 @@ function setJobOpsColumnFormatIfPresent_(sheet, headers, headerName, numberForma
 }
 
 /**
- * Adds dropdown and checkbox validation while preserving existing validation rules.
+ * Updates JobOps-managed dropdown and checkbox validation before seed data is
+ * written, so a new allowed value cannot be rejected by an older dropdown.
  *
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @param {string[]} headers
@@ -436,7 +437,7 @@ function applyJobOpsDataValidations_(sheet, headers) {
       .setAllowInvalid(false)
       .setHelpText(`Allowed values: ${listRules[headerName].join(', ')}`)
       .build();
-    setJobOpsValidationWhereMissing_(sheet, index + 1, rule);
+    setJobOpsColumnValidation_(sheet, index + 1, rule);
   }
 
   for (const headerName of ['ENABLED', 'RESOLVED']) {
@@ -446,37 +447,25 @@ function applyJobOpsDataValidations_(sheet, headers) {
     }
 
     const rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
-    setJobOpsValidationWhereMissing_(sheet, index + 1, rule);
+    setJobOpsColumnValidation_(sheet, index + 1, rule);
   }
 }
 
 /**
- * Fills only cells without an existing validation rule.
+ * Applies one JobOps-managed validation rule to a full column.
  *
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @param {number} columnNumber
  * @param {GoogleAppsScript.Spreadsheet.DataValidation} rule
  */
-function setJobOpsValidationWhereMissing_(sheet, columnNumber, rule) {
+function setJobOpsColumnValidation_(sheet, columnNumber, rule) {
   const rowCount = sheet.getMaxRows() - 1;
   if (rowCount <= 0) {
     return;
   }
 
   const range = sheet.getRange(2, columnNumber, rowCount, 1);
-  const validations = range.getDataValidations();
-  let changed = false;
-
-  for (let rowIndex = 0; rowIndex < validations.length; rowIndex += 1) {
-    if (!validations[rowIndex][0]) {
-      validations[rowIndex][0] = rule;
-      changed = true;
-    }
-  }
-
-  if (changed) {
-    range.setDataValidations(validations);
-  }
+  range.setDataValidations(Array.from({ length: rowCount }, () => [rule]));
 }
 
 /**
