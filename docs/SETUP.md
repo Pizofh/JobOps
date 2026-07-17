@@ -1,5 +1,13 @@
 # Configuración
 
+## Actualización de estrategia
+
+Tras desplegar el ajuste de estrategia, ejecuta `setupJobOps()` una vez y
+después `validateJobOpsConfiguration()`. El setup es idempotente: añade las
+familias, reglas y columnas nuevas, y conserva filas configuradas manualmente,
+notas y enlaces de Drive. Ejecuta `rescoreJobs()` solo cuando quieras
+reclasificar las vacantes ya guardadas.
+
 ## Requisitos
 
 - Node.js 22.13 o posterior y npm 10 o posterior.

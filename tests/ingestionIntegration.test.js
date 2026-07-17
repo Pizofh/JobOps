@@ -53,10 +53,10 @@ test('ingestion dry run is immutable and real ingestion isolates message errors'
     (row, index) => index > 0 && row[headers.indexOf('SOURCE')] === 'Recruiter',
   );
   assert.ok(recruiterRow);
-  assert.equal(recruiterRow[headers.indexOf('ROLE_FAMILY')], 'DEVOPS_PLATFORM_SRE');
+  assert.equal(recruiterRow[headers.indexOf('ROLE_FAMILY')], 'DEVOPS_CLOUDOPS_JR');
   assert.equal(recruiterRow[headers.indexOf('MATCH_SCORE')], 16);
   assert.equal(recruiterRow[headers.indexOf('PRIORITY')], 'HIGH');
-  assert.equal(recruiterRow[headers.indexOf('RECOMMENDED_CV')], 'DEVOPS_PLATFORM');
+  assert.equal(recruiterRow[headers.indexOf('RECOMMENDED_CV')], 'CV_TO_CREATE');
   assert.equal(recruiterRow[headers.indexOf('RECRUITER_EMAIL')], 'ana@talent.example');
   assert.equal(jobsSheet.getLastRow(), 3);
   assert.equal(services.spreadsheet.getSheetByName('ParsingErrors').getLastRow(), 2);

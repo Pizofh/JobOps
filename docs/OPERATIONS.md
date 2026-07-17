@@ -1,5 +1,17 @@
 # Operación
 
+## Actualización de estrategia
+
+Después de desplegar este ajuste, ejecuta `setupJobOps()` una vez. Añade las
+columnas `GROUP` y `STRATEGIC_LEVEL`, crea las familias y reglas nuevas, y solo
+migra filas iniciales que no fueron personalizadas. Luego ejecuta
+`rescoreJobs()` manualmente para actualizar familia, score, prioridad, CV,
+coincidencias y riesgos sin modificar estado, fechas ni notas.
+
+La estrategia inicial combina cargos directos DevOps/Platform/SRE de entrada
+con roles puente de soporte cloud y de aplicaciones, release, Linux e backend
+con operación. Puedes ajustar todo desde las hojas sin otro despliegue.
+
 ## Funciones disponibles
 
 - `setupJobOps()`: crea o completa de forma no destructiva hojas, encabezados, configuración inicial, validaciones, formato y etiquetas.

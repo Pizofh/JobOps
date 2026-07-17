@@ -12,7 +12,7 @@ function openJobOpsSpreadsheet_(spreadsheetId) {
  * Creates missing sheets and initializes their schema without replacing data.
  *
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
- * @returns {{createdSheets: string[], extendedHeaders: Object<string, number>, seededRows: Object<string, number>}}
+ * @returns {{createdSheets: string[], extendedHeaders: Object<string, number>, seededRows: Object<string, number>, preservedSeedRows: Object<string, number>}}
  */
 function setupJobOpsSpreadsheet_(spreadsheet) {
   assertValidJobOpsDefinitions_();
@@ -21,6 +21,7 @@ function setupJobOpsSpreadsheet_(spreadsheet) {
     createdSheets: [],
     extendedHeaders: {},
     seededRows: {},
+    preservedSeedRows: {},
   };
 
   for (const definition of JOBOPS_SHEET_DEFINITIONS) {
@@ -33,7 +34,17 @@ function setupJobOpsSpreadsheet_(spreadsheet) {
 
     ensureJobOpsSheetSize_(sheet, 2, definition.headers.length);
     summary.extendedHeaders[definition.name] = ensureJobOpsHeaders_(sheet, definition.headers);
-    summary.seededRows[definition.name] = appendMissingJobOpsSeedRows_(sheet, definition.seedRows);
+    const seedResult = upsertJobOpsStandardSeedRows_(
+      sheet,
+      definition.seedRows,
+      definition.legacySeedRows || [],
+    );
+    summary.seededRows[definition.name] = seedResult.created + seedResult.updated;
+    summary.preservedSeedRows[definition.name] = seedResult.preserved;
+
+    if (definition.name === JOBOPS_SHEET_NAMES.ROLE_FAMILIES) {
+      summary.seededRows[definition.name] += deactivateJobOpsLegacyRoleFamilies_(sheet);
+    }
 
     formatJobOpsSheet_(sheet, definition.headers);
     applyJobOpsDataValidations_(sheet, definition.headers);
@@ -194,6 +205,125 @@ function appendMissingJobOpsSeedRows_(sheet, seedRows) {
   ensureJobOpsSheetSize_(sheet, startRow + missingRows.length - 1, missingRows[0].length);
   sheet.getRange(startRow, 1, missingRows.length, missingRows[0].length).setValues(missingRows);
   return missingRows.length;
+}
+
+/**
+ * Inserts current standard rows and upgrades only exact legacy defaults. Any
+ * user-modified configuration is deliberately left untouched.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {*[][]} seedRows
+ * @param {*[][]} legacySeedRows
+ * @returns {{created: number, updated: number, preserved: number}}
+ */
+function upsertJobOpsStandardSeedRows_(sheet, seedRows, legacySeedRows) {
+  if (seedRows.length === 0) {
+    return { created: 0, updated: 0, preserved: 0 };
+  }
+
+  const dataRowCount = Math.max(sheet.getLastRow() - 1, 0);
+  const width = sheet.getLastColumn();
+  const rows = dataRowCount > 0 ? sheet.getRange(2, 1, dataRowCount, width).getValues() : [];
+  const existingByKey = new Map(
+    rows
+      .map((row, index) => [normalizeJobOpsText_(row[0]).toUpperCase(), { row, index }])
+      .filter(([key]) => Boolean(key)),
+  );
+  const legacyByKey = new Map(
+    legacySeedRows.map((row) => [normalizeJobOpsText_(row[0]).toUpperCase(), row]),
+  );
+  const missingRows = [];
+  const updates = [];
+  let preserved = 0;
+
+  for (const seedRow of seedRows) {
+    const key = normalizeJobOpsText_(seedRow[0]).toUpperCase();
+    const existing = existingByKey.get(key);
+    if (!existing) {
+      missingRows.push(seedRow.slice());
+      continue;
+    }
+    if (matchesJobOpsSeedRow_(existing.row, seedRow)) {
+      continue;
+    }
+    const legacyRow = legacyByKey.get(key);
+    if (legacyRow && matchesJobOpsSeedRow_(existing.row, legacyRow)) {
+      updates.push({ rowNumber: existing.index + 2, values: seedRow.slice() });
+    } else {
+      preserved += 1;
+    }
+  }
+
+  for (const update of updates) {
+    sheet.getRange(update.rowNumber, 1, 1, update.values.length).setValues([update.values]);
+  }
+
+  if (missingRows.length > 0) {
+    const startRow = sheet.getLastRow() + 1;
+    ensureJobOpsSheetSize_(sheet, startRow + missingRows.length - 1, missingRows[0].length);
+    sheet.getRange(startRow, 1, missingRows.length, missingRows[0].length).setValues(missingRows);
+  }
+
+  return { created: missingRows.length, updated: updates.length, preserved };
+}
+
+/**
+ * Compares a stored row to a known seed. Trailing columns must be blank so an
+ * added migration column does not make an untouched legacy row look custom.
+ *
+ * @param {*[]} actualRow
+ * @param {*[]} expectedRow
+ * @returns {boolean}
+ */
+function matchesJobOpsSeedRow_(actualRow, expectedRow) {
+  const matchesExpected = expectedRow.every(
+    (value, index) => normalizeJobOpsText_(actualRow[index]) === normalizeJobOpsText_(value),
+  );
+  return matchesExpected && actualRow.slice(expectedRow.length).every(isJobOpsBlankValue_);
+}
+
+/** @param {*} value @returns {boolean} */
+function isJobOpsBlankValue_(value) {
+  return normalizeJobOpsText_(value) === '';
+}
+
+/**
+ * Turns off only untouched legacy families whose replacements use new stable
+ * identifiers. Customized legacy rows remain available to the user.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @returns {number}
+ */
+function deactivateJobOpsLegacyRoleFamilies_(sheet) {
+  const replacementKeys = new Set(JOBOPS_STRATEGY_ROLE_FAMILY_ROWS.map((row) => row[0]));
+  const legacyRows = JOBOPS_DEFAULT_ROLE_FAMILY_ROWS.filter((row) => !replacementKeys.has(row[0]));
+  if (legacyRows.length === 0) {
+    return 0;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const enabledColumn = headers.indexOf('ENABLED') + 1;
+  const strategicLevelColumn = headers.indexOf('STRATEGIC_LEVEL') + 1;
+  if (!enabledColumn || !strategicLevelColumn) {
+    return 0;
+  }
+
+  const dataRowCount = Math.max(sheet.getLastRow() - 1, 0);
+  const rows =
+    dataRowCount > 0 ? sheet.getRange(2, 1, dataRowCount, sheet.getLastColumn()).getValues() : [];
+  let deactivated = 0;
+  for (const legacyRow of legacyRows) {
+    const rowIndex = rows.findIndex(
+      (row) => normalizeJobOpsText_(row[0]) === normalizeJobOpsText_(legacyRow[0]),
+    );
+    if (rowIndex === -1 || !matchesJobOpsSeedRow_(rows[rowIndex], legacyRow)) {
+      continue;
+    }
+    sheet.getRange(rowIndex + 2, enabledColumn).setValues([[false]]);
+    sheet.getRange(rowIndex + 2, strategicLevelColumn).setValues([['UNRELATED']]);
+    deactivated += 1;
+  }
+  return deactivated;
 }
 
 /**
@@ -785,4 +915,50 @@ function getJobOpsPriorityForScore_(score, config) {
     return 'OPTIONAL';
   }
   return 'LOW';
+}
+
+/**
+ * Combines editable thresholds with the classified role's strategic level.
+ * Score remains decisive, while direct and bridge roles are no longer treated
+ * identically to unrelated or secondary opportunities.
+ *
+ * @param {number} score
+ * @param {Object} config
+ * @param {{strategicLevel: string, minimumReviewScore: number}} classification
+ * @returns {string}
+ */
+function getJobOpsPriorityForEvaluation_(score, config, classification) {
+  const level = normalizeJobOpsSingleLineText_(classification.strategicLevel).toUpperCase();
+  if (level === 'UNRELATED') {
+    return 'LOW';
+  }
+
+  const basePriority = getJobOpsPriorityForScore_(score, config);
+  const familyMinimum = Number(classification.minimumReviewScore);
+  const minimumReviewScore = Number.isFinite(familyMinimum)
+    ? familyMinimum
+    : config.REVIEW_THRESHOLD;
+
+  if (level === 'DIRECT') {
+    if (score >= minimumReviewScore) {
+      return 'HIGH';
+    }
+    return score >= config.OPTIONAL_THRESHOLD ? 'REVIEW' : basePriority;
+  }
+
+  if (level === 'BRIDGE') {
+    if (score >= Math.max(config.REVIEW_THRESHOLD, minimumReviewScore)) {
+      return 'HIGH';
+    }
+    if (score >= minimumReviewScore) {
+      return 'REVIEW';
+    }
+    return basePriority;
+  }
+
+  if (level === 'SECONDARY') {
+    return score >= Math.max(config.REVIEW_THRESHOLD, minimumReviewScore) ? 'REVIEW' : basePriority;
+  }
+
+  return basePriority;
 }

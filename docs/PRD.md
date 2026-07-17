@@ -398,16 +398,19 @@ Columnas:
 - `RISK_FLAG`
 - `ENABLED`
 - `NOTES`
+- `GROUP`
 
 Valores permitidos para `MATCH_TYPE`:
 
 - `KEYWORD`
 - `REGEX`
 - `PHRASE`
+- `ALL_KEYWORDS`
 
 Valores permitidos para `CONTEXT`:
 
 - `ANY`
+- `TITLE`
 - `REQUIRED`
 - `PREFERRED`
 - `NEGATIVE`
@@ -449,6 +452,7 @@ Columnas:
 - `MINIMUM_REVIEW_SCORE`
 - `ENABLED`
 - `NOTES`
+- `STRATEGIC_LEVEL`
 
 Valores iniciales:
 
@@ -481,6 +485,8 @@ Ejemplos:
 - `CV_TO_CREATE`
 
 Debe ser posible agregar nuevas variantes de CV sin modificar JavaScript.
+Un perfil sin `DRIVE_URL` no se recomienda: devuelve `CV_TO_CREATE` hasta que
+se configure el enlace real.
 
 ## 7.5 `Sources`
 
@@ -1530,6 +1536,33 @@ Este es el primer resultado realmente útil.
 El usuario puede trabajar diariamente usando únicamente el Sheet y el resumen.
 
 ---
+
+# Estrategia de búsqueda y priorización
+
+JobOps usa una estrategia doble y editable desde Sheets:
+
+- Roles directos de entrada: `DEVOPS_CLOUDOPS_JR` y `PLATFORM_SRE_ASSOCIATE` (`DIRECT`).
+- Roles puente: Cloud/Application/Production Support, Release/CI/CD, Linux Infrastructure y Backend con operación (`BRIDGE`).
+- Especialidades secundarias: observabilidad/NOC e IAM/DevSecOps (`SECONDARY`).
+
+`RoleFamilies` incorpora `STRATEGIC_LEVEL`. `ScoringRules` incorpora `GROUP`,
+`TITLE` y `ALL_KEYWORDS`; este último separa condiciones con `|` para sinergias
+simples, y un grupo evita sumar variantes equivalentes varias veces. Las reglas
+siguen siendo editables desde la hoja.
+
+`setupJobOps()` agrega de forma idempotente las filas estándar y solo actualiza
+una fila que coincida exactamente con un valor inicial anterior. Configuración,
+notas, enlaces de Drive, vacantes y sus campos manuales se conservan. Después
+de revisar los cambios, ejecuta `rescoreJobs()` manualmente: nunca se ejecuta
+automáticamente durante la migración.
+
+La prioridad combina score y nivel estratégico. El digest aplica una mezcla
+aproximada de roles directos, soporte técnico, backend con DevOps,
+infraestructura/release y especialidades, sin forzar cuotas si no hay vacantes.
+
+La recomendación usa `DEVOPS_PLATFORM`, `CLOUDOPS_SUPPORT` o
+`BACKEND_AUTOMATION` según la familia. Si el perfil no existe o no tiene enlace
+en `DRIVE_URL`, el resultado es `CV_TO_CREATE`.
 
 ## Fase 6 — Endurecimiento
 

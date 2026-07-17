@@ -114,7 +114,7 @@ test('rescoreJobs updates only evaluation fields and retains manual job values',
 
   assert.equal(result.phase, 4);
   assert.equal(result.rescoredJobs, 1);
-  assert.equal(row[headers.indexOf('ROLE_FAMILY')], 'DEVOPS_PLATFORM_SRE');
+  assert.equal(row[headers.indexOf('ROLE_FAMILY')], 'DEVOPS_CLOUDOPS_JR');
   assert.equal(row[headers.indexOf('MATCH_SCORE')], 14);
   assert.equal(row[headers.indexOf('STATUS')], 'APPLIED');
   assert.equal(row[headers.indexOf('APPLIED_DATE')], '2026-07-15');

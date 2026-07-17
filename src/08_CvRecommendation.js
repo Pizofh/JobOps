@@ -33,13 +33,11 @@ function parseJobOpsCvProfiles_(values) {
  */
 function recommendJobOpsCv_(roleFamily, profiles, preferredProfile) {
   const preferred = normalizeJobOpsSingleLineText_(preferredProfile);
-  const matching = profiles.find(
-    (profile) => profile.profile === preferred && profile.targetRoleFamilies.includes(roleFamily),
-  );
+  const matching = profiles.find((profile) => profile.profile === preferred);
   const configured =
     matching || profiles.find((profile) => profile.targetRoleFamilies.includes(roleFamily));
   const fallback = profiles.find((profile) => profile.profile === 'CV_TO_CREATE');
-  const selected = configured || fallback;
+  const selected = configured && configured.driveUrl ? configured : fallback;
 
   if (!selected) {
     return {
@@ -52,9 +50,10 @@ function recommendJobOpsCv_(roleFamily, profiles, preferredProfile) {
   return {
     profile: selected.profile,
     driveUrl: selected.driveUrl,
-    reason: configured
-      ? `Configured for ${roleFamily}.`
-      : 'No enabled CV profile matches this role family.',
+    reason:
+      configured && configured.driveUrl
+        ? `Configured for ${roleFamily}.`
+        : 'The matching CV profile has no Drive link configured.',
   };
 }
 
@@ -77,7 +76,7 @@ function evaluateJobOpsJob_(job, context) {
   return {
     ROLE_FAMILY: classification.roleFamily,
     MATCH_SCORE: score.score,
-    PRIORITY: score.priority,
+    PRIORITY: getJobOpsPriorityForEvaluation_(score.score, context.config, classification),
     RECOMMENDED_CV: recommendation.profile,
     CV_LINK: recommendation.driveUrl,
     STRONG_MATCHES: score.strongMatches.join('\n'),
