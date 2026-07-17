@@ -15,7 +15,7 @@ La validación ejecuta, en orden:
 3. Pruebas de Node.
 4. Validación estricta de `appsscript.json` y sus scopes permitidos.
 
-## Cobertura de las Fases 1, 2 y 3
+## Cobertura de las Fases 1, 2, 3 y 4
 
 Las pruebas verifican:
 
@@ -34,6 +34,10 @@ Las pruebas verifican:
 - Unión de una segunda fuente en `ALL_SOURCES`, preservando estado, fechas y notas manuales.
 - Parser específico de LinkedIn y selección segura del parser de Indeed.
 - Parser genérico para una fuente configurada o fuente sin fixture específico.
+- Clasificación por patrones editables de `RoleFamilies`.
+- Score explicable con reglas positivas, negativas, de requerimiento y bono de reclutador.
+- Recomendación de CV desde `CVProfiles`.
+- `rescoreJobs()` que solo actualiza campos de evaluación y conserva los campos manuales.
 - Parser de reclutador con encabezados originales de un reenvío tipo Hotmail/Outlook.
 - Error estable para una alerta candidata sin datos mínimos.
 - Dry run sin cambios en Sheets ni etiquetas.

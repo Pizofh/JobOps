@@ -33,8 +33,14 @@ function handleStatusEdit(event) {
   void event;
 }
 
-/** Reserved for the scoring phase. */
-function rescoreJobs() {}
+/**
+ * Re-evaluates existing Jobs from editable role, scoring and CV settings.
+ *
+ * @returns {Object}
+ */
+function rescoreJobs() {
+  return runJobOpsRescore_();
+}
 
 /**
  * Executes the complete ingestion path without mutating Gmail or Sheets.
@@ -79,6 +85,7 @@ function runJobOpsIngestion_(forceDryRun) {
     }
 
     const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
+    const evaluationContext = createJobOpsEvaluationContext_(spreadsheet, config);
     const dryRun = Boolean(forceDryRun || config.DRY_RUN);
     const sourceDefinitions = readJobOpsSourceDefinitions_(spreadsheet);
     const deduplicationIndex = readJobOpsDeduplicationIndex_(spreadsheet);
@@ -101,6 +108,13 @@ function runJobOpsIngestion_(forceDryRun) {
       try {
         const parsed = parseJobOpsMessage_(envelope.input, sourceDefinitions);
         const record = buildJobOpsJobRecord_(envelope.input, parsed, config);
+        Object.assign(
+          record,
+          evaluateJobOpsJob_(
+            { ...parsed, isRecruiter: parsed.detection.isRecruiter },
+            evaluationContext,
+          ),
+        );
         const candidate = {
           messageId: envelope.input.messageId,
           jobUrl: parsed.jobUrl,
@@ -116,6 +130,25 @@ function runJobOpsIngestion_(forceDryRun) {
             Object.assign(
               duplicateMatch.target.record,
               mergeJobOpsDuplicateRecord_(duplicateMatch.target.record, record),
+            );
+            Object.assign(
+              duplicateMatch.target.record,
+              evaluateJobOpsJob_(
+                {
+                  position: duplicateMatch.target.record.POSITION,
+                  descriptionText: parsed.descriptionText,
+                  requiredTechnologies: normalizeJobOpsSingleLineText_(
+                    duplicateMatch.target.record.REQUIRED_TECHNOLOGIES,
+                  )
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                  isRecruiter:
+                    duplicateMatch.target.record.SOURCE === 'Recruiter' ||
+                    Boolean(duplicateMatch.target.record.RECRUITER_EMAIL),
+                },
+                evaluationContext,
+              ),
             );
             registerJobOpsCandidate_(candidate, deduplicationIndex, duplicateMatch.target);
 
@@ -184,7 +217,7 @@ function runJobOpsIngestion_(forceDryRun) {
 
     const summary = {
       ok: true,
-      phase: 3,
+      phase: 4,
       dryRun,
       scannedMessages: inbox.scannedMessages,
       candidateMessages: inbox.candidates.length,
@@ -196,6 +229,77 @@ function runJobOpsIngestion_(forceDryRun) {
       recruiterMessages: recruiterCount,
     };
     logJobOpsIngestionSummary_(summary);
+    return summary;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Loads all editable settings required for one job evaluation.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @param {Object} config
+ * @returns {{roleFamilies: Object[], scoringRules: Object[], cvProfiles: Object[], config: Object}}
+ */
+function createJobOpsEvaluationContext_(spreadsheet, config) {
+  return {
+    roleFamilies: readJobOpsRoleFamilies_(spreadsheet),
+    scoringRules: readJobOpsScoringRules_(spreadsheet),
+    cvProfiles: readJobOpsCvProfiles_(spreadsheet),
+    config,
+  };
+}
+
+/**
+ * Recalculates system-managed evaluation fields without changing manual data.
+ *
+ * @returns {Object}
+ */
+function runJobOpsRescore_() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) {
+    throw createJobOpsError_(
+      JOBOPS_ERROR_CODES.INGESTION_LOCK,
+      'Another JobOps process is already running.',
+    );
+  }
+
+  try {
+    const properties = readJobOpsScriptProperties_();
+    assertValidJobOpsScriptProperties_(properties);
+    const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    const schemaErrors = getJobOpsSheetSchemaErrors_(spreadsheet);
+    if (schemaErrors.length > 0) {
+      throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, schemaErrors.join(' '));
+    }
+
+    const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
+    const evaluationContext = createJobOpsEvaluationContext_(spreadsheet, config);
+    const targets = readJobOpsJobsForRescore_(spreadsheet);
+
+    for (const target of targets) {
+      const record = target.record;
+      Object.assign(
+        record,
+        evaluateJobOpsJob_(
+          {
+            position: record.POSITION,
+            descriptionText: '',
+            requiredTechnologies: normalizeJobOpsSingleLineText_(record.REQUIRED_TECHNOLOGIES)
+              .split(',')
+              .map((item) => item.trim())
+              .filter(Boolean),
+            isRecruiter: record.SOURCE === 'Recruiter' || Boolean(record.RECRUITER_EMAIL),
+          },
+          evaluationContext,
+        ),
+      );
+    }
+
+    updateJobOpsJobEvaluationFields_(spreadsheet, targets);
+    const summary = { ok: true, phase: 4, rescoredJobs: targets.length };
+    Logger.log(`JobOps Phase 4: rescored=${summary.rescoredJobs}`);
     return summary;
   } finally {
     lock.releaseLock();
@@ -249,6 +353,6 @@ function writeJobOpsIngestionBatch_(spreadsheet, duplicateUpdateTargets, jobReco
  */
 function logJobOpsIngestionSummary_(summary) {
   Logger.log(
-    `JobOps Phase 3: dryRun=${summary.dryRun}, scanned=${summary.scannedMessages}, candidates=${summary.candidateMessages}, created=${summary.createdJobs}, wouldCreate=${summary.wouldCreateJobs}, errors=${summary.parsingErrors}, duplicates=${summary.duplicates}`,
+    `JobOps Phase 4: dryRun=${summary.dryRun}, scanned=${summary.scannedMessages}, candidates=${summary.candidateMessages}, created=${summary.createdJobs}, wouldCreate=${summary.wouldCreateJobs}, errors=${summary.parsingErrors}, duplicates=${summary.duplicates}`,
   );
 }

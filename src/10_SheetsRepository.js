@@ -444,6 +444,94 @@ function readJobOpsSourceDefinitions_(spreadsheet) {
 }
 
 /**
+ * Loads enabled role-family definitions once per evaluation run.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @returns {Object[]}
+ */
+function readJobOpsRoleFamilies_(spreadsheet) {
+  return parseJobOpsRoleFamilies_(
+    getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.ROLE_FAMILIES)
+      .getDataRange()
+      .getValues(),
+  );
+}
+
+/**
+ * Loads enabled scoring rules once per evaluation run.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @returns {Object[]}
+ */
+function readJobOpsScoringRules_(spreadsheet) {
+  return parseJobOpsScoringRules_(
+    getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.SCORING_RULES)
+      .getDataRange()
+      .getValues(),
+  );
+}
+
+/**
+ * Loads enabled CV profiles once per evaluation run.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @returns {Object[]}
+ */
+function readJobOpsCvProfiles_(spreadsheet) {
+  return parseJobOpsCvProfiles_(
+    getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.CV_PROFILES).getDataRange().getValues(),
+  );
+}
+
+/**
+ * Reads all existing Jobs as named records for a manual rescore.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @returns {{rowNumber: number, record: Object<string, *>}[]}
+ */
+function readJobOpsJobsForRescore_(spreadsheet) {
+  const sheet = getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.JOBS);
+  const headers = JOBOPS_SHEET_HEADERS.Jobs;
+  const rowCount = Math.max(sheet.getLastRow() - 1, 0);
+  const values = rowCount > 0 ? sheet.getRange(2, 1, rowCount, headers.length).getValues() : [];
+
+  return values.map((row, index) => ({
+    rowNumber: index + 2,
+    record: createJobOpsRecordFromRow_(headers, row),
+  }));
+}
+
+/**
+ * Writes only Phase 4 system fields in three column batches. Manual columns
+ * are never read back into a write operation.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet
+ * @param {{rowNumber: number, record: Object<string, *>}[]} targets
+ * @returns {number}
+ */
+function updateJobOpsJobEvaluationFields_(spreadsheet, targets) {
+  if (targets.length === 0) {
+    return 0;
+  }
+
+  const sheet = getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.JOBS);
+  const fieldGroups = [
+    ['ROLE_FAMILY', 'MATCH_SCORE', 'PRIORITY'],
+    ['RECOMMENDED_CV', 'CV_LINK'],
+    ['STRONG_MATCHES', 'RISK_FLAGS'],
+  ];
+
+  for (const fields of fieldGroups) {
+    const firstColumn = getJobOpsColumnNumber_(JOBOPS_SHEET_HEADERS.Jobs, fields[0]);
+    sheet
+      .getRange(2, firstColumn, targets.length, fields.length)
+      .setValues(targets.map((target) => fields.map((field) => target.record[field] ?? '')));
+  }
+
+  return targets.length;
+}
+
+/**
  * Loads exact deduplication identifiers from Jobs in one read.
  *
  * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} spreadsheet

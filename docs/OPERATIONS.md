@@ -6,8 +6,9 @@
 - `validateJobOpsConfiguration()`: valida Script Properties, estructura de hojas y valores de `Config` sin exponer IDs privados.
 - `dryRunIngestion()`: busca, detecta, normaliza y deduplica candidatos sin modificar Gmail ni Sheets.
 - `ingestJobs()`: ejecuta la ingestión real; también funciona como dry run cuando `Config.DRY_RUN` es `true`.
+- `rescoreJobs()`: recalcula familia, score, prioridad y CV para las filas existentes sin cambiar estado, fechas ni notas.
 
-Los entrypoints de triggers, digest, scoring y estados siguen inertes hasta su fase correspondiente.
+Los entrypoints de triggers, digest y estados siguen inertes hasta su fase correspondiente.
 
 ## Ejecución segura
 
@@ -18,10 +19,15 @@ Los entrypoints de triggers, digest, scoring y estados siguen inertes hasta su f
 5. Si falta una fila inicial, vuelve a ejecutar `setupJobOps()`; solo se agregará la clave faltante.
 6. Si aparece `CONFIGURATION_ERROR` por un encabezado incompatible, corrige manualmente el encabezado. El setup no lo reemplazará.
 7. Revisa `npx clasp show-file-status` antes de cada despliegue manual.
+8. Tras ajustar estrategia, ejecuta `rescoreJobs()` y revisa `ROLE_FAMILY`, `MATCH_SCORE`, `PRIORITY`, `RECOMMENDED_CV`, `STRONG_MATCHES` y `RISK_FLAGS`.
 
 ## Valores iniciales editables
 
 `DIGEST_HOUR` comienza en `8` y `RECRUITER_SCORE_BONUS` en `5`. Son decisiones iniciales, no valores permanentes: pueden cambiarse en `Config` sin modificar JavaScript.
+
+## Ajustar la estrategia profesional
+
+No necesitas decidir todavía entre DevOps/SRE y roles técnicos más accesibles. Ajusta las filas habilitadas de `RoleFamilies` y `ScoringRules` para reflejar cada enfoque, y ejecuta `rescoreJobs()` para actualizar las vacantes existentes. Por ejemplo, puedes conservar la regla negativa de `Senior`, reducir su penalización o ampliar los patrones de `OTHER_TECHNICAL`; los cambios se aplican desde la hoja y no requieren un nuevo despliegue.
 
 ## Comportamiento de la ingestión
 

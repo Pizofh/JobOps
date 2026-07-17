@@ -24,7 +24,7 @@ test('Apps Script sources load without accessing Google services at file load ti
 
 test('entrypoints reserved for later phases remain inert', () => {
   const context = loadJobOpsContext();
-  const inertEntrypoints = ['installJobOpsTriggers', 'sendDailyDigest', 'rescoreJobs'];
+  const inertEntrypoints = ['installJobOpsTriggers', 'sendDailyDigest'];
 
   for (const name of inertEntrypoints) {
     assert.equal(context[name](), undefined, `${name} must remain inert`);
