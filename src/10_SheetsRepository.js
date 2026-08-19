@@ -229,9 +229,13 @@ function upsertJobOpsStandardSeedRows_(sheet, seedRows, legacySeedRows) {
       .map((row, index) => [normalizeJobOpsText_(row[0]).toUpperCase(), { row, index }])
       .filter(([key]) => Boolean(key)),
   );
-  const legacyByKey = new Map(
-    legacySeedRows.map((row) => [normalizeJobOpsText_(row[0]).toUpperCase(), row]),
-  );
+  const legacyByKey = new Map();
+  for (const row of legacySeedRows) {
+    const key = normalizeJobOpsText_(row[0]).toUpperCase();
+    const versions = legacyByKey.get(key) || [];
+    versions.push(row);
+    legacyByKey.set(key, versions);
+  }
   const missingRows = [];
   const updates = [];
   let preserved = 0;
@@ -246,8 +250,8 @@ function upsertJobOpsStandardSeedRows_(sheet, seedRows, legacySeedRows) {
     if (matchesJobOpsSeedRow_(existing.row, seedRow)) {
       continue;
     }
-    const legacyRow = legacyByKey.get(key);
-    if (legacyRow && matchesJobOpsSeedRow_(existing.row, legacyRow)) {
+    const legacyRows = legacyByKey.get(key) || [];
+    if (legacyRows.some((legacyRow) => matchesJobOpsSeedRow_(existing.row, legacyRow))) {
       updates.push({ rowNumber: existing.index + 2, values: seedRow.slice() });
     } else {
       preserved += 1;

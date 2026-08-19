@@ -48,6 +48,25 @@ Nunca confirmes `.clasp.json`, credenciales, IDs privados, correos reales, CV ni
 7. Tras revisar el dry run, ejecuta `installJobOpsTriggers()` una sola vez y acepta los permisos adicionales para triggers y envío de correo.
 8. Ejecuta `ingestJobs()` solo después de validar ese resultado.
 
+## Datos que faltan para una instalación real
+
+El repositorio no debe contener estos valores. Configúralos únicamente en los
+servicios privados indicados:
+
+- Script ID del proyecto de Apps Script, en el archivo local ignorado `.clasp.json`.
+- `SPREADSHEET_ID` y `USER_EMAIL`, en Script Properties.
+- Enlace de Drive del CV vigente, en `CVProfiles.DRIVE_URL`. Mientras esté vacío,
+  JobOps devuelve `CV_TO_CREATE` y nunca adjunta ni envía el archivo.
+- Alertas o newsletters que lleguen al Gmail autorizado. Si llegan a Hotmail,
+  reenvíalas a ese Gmail conservando el remitente y asunto originales.
+
+JobOps no reemplaza una alerta que el portal no permita crear: no inicia sesión,
+no evita CAPTCHA y no hace scraping. Sin un correo de entrada, esa fuente no
+produce vacantes. LinkedIn e Indeed tienen parser específico; Get on Board,
+WeRemoto, We Work Remotely y ElEmpleo usan el parser genérico hasta disponer de
+correos reales anonimizados para fixtures. Computrabajo queda desactivado por
+defecto y puede habilitarse posteriormente desde `Sources`.
+
 La primera ejecución inserta encabezados y filas iniciales. Las siguientes ejecuciones agregan únicamente elementos faltantes; no reemplazan claves de configuración, notas ni otros valores existentes. Un encabezado incompatible produce `CONFIGURATION_ERROR` antes de sobrescribirlo.
 
 `USER_EMAIL` puede ser una dirección Hotmail/Outlook: se reserva para el digest posterior. La ingestión siempre lee el buzón de la cuenta de Google que autoriza el script. Puedes reenviar a ese Gmail los mensajes recibidos en Hotmail; el parser intenta recuperar el remitente y asunto originales.

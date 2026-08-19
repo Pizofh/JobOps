@@ -27,12 +27,18 @@ test('strategy classifies direct and bridge role families from editable patterns
   const { context, roles } = createStrategyContext();
   const cases = [
     ['Junior DevOps Engineer', 'DEVOPS_CLOUDOPS_JR'],
+    ['Cloud Engineer', 'DEVOPS_CLOUDOPS_JR'],
+    ['Infrastructure Automation Engineer', 'DEVOPS_CLOUDOPS_JR'],
+    ['Platform Engineer', 'PLATFORM_SRE_ASSOCIATE'],
+    ['Site Reliability Engineer', 'PLATFORM_SRE_ASSOCIATE'],
     ['Cloud Site Reliability Engineer Associate', 'PLATFORM_SRE_ASSOCIATE'],
     ['Cloud Support Engineer - Linux and AWS', 'CLOUD_SUPPORT_OPERATIONS'],
     ['Application Support Engineer L2 - SQL, APIs and logs', 'APPLICATION_PRODUCTION_SUPPORT'],
     ['Release Engineer - GitLab CI/CD and Docker', 'RELEASE_CICD_AUTOMATION'],
     ['Linux Systems Engineer - Ansible and Nginx', 'LINUX_INFRASTRUCTURE'],
+    ['Infrastructure Engineer - Linux and Ansible', 'LINUX_INFRASTRUCTURE'],
     ['Python Backend Engineer - Docker, AWS and CI/CD', 'BACKEND_WITH_DEVOPS'],
+    ['Software Engineer Python - Docker and AWS', 'BACKEND_WITH_DEVOPS'],
     ['Observability Engineer - Prometheus and Grafana', 'OBSERVABILITY_NOC'],
     ['IAM Analyst - AWS and access control', 'IAM_DEVSECOPS'],
   ];
@@ -84,6 +90,49 @@ test('strategy scores seniority, experience, Kubernetes and recruiter signals tr
   assert.match(recruiter.strongMatches.join('\n'), /Recruiter \+5/);
 });
 
+test('strategy applies work mode, compensation, contract, schedule and exclusion constraints', () => {
+  const { context, rules, config } = createStrategyContext();
+  const score = (overrides) =>
+    context.calculateJobOpsScore_(
+      {
+        position: 'Cloud Engineer',
+        descriptionText: '',
+        requiredTechnologies: [],
+        isRecruiter: false,
+        ...overrides,
+      },
+      rules,
+      config,
+    );
+
+  assert.match(score({ workMode: 'REMOTE' }).strongMatches.join('\n'), /REMOTE \+4/);
+  assert.match(score({ workMode: 'ONSITE' }).riskFlags.join('\n'), /ONSITE_ROLE/);
+  assert.match(
+    score({ workMode: 'HYBRID', descriptionText: 'Hybrid, 4 days in the office.' }).riskFlags.join(
+      '\n',
+    ),
+    /MORE_THAN_THREE_ONSITE_DAYS/,
+  );
+  assert.match(score({ salary: 'COP 5.500.000 mensuales' }).riskFlags.join('\n'), /COP_BELOW_6M/);
+  assert.doesNotMatch(score({ salary: 'USD 1,500 monthly' }).riskFlags.join('\n'), /COP_BELOW_6M/);
+  assert.match(
+    score({ descriptionText: 'This role requires a night shift.' }).riskFlags.join('\n'),
+    /NIGHT_SHIFT/,
+  );
+  assert.match(
+    score({ descriptionText: 'Contrato a término fijo.' }).riskFlags.join('\n'),
+    /FIXED_TERM_CONTRACT/,
+  );
+  assert.match(
+    score({ position: 'Data Analyst', descriptionText: 'Dashboards and BI.' }).riskFlags.join('\n'),
+    /DATA_BI_ROLE/,
+  );
+  assert.match(
+    score({ position: 'Windows System Administrator' }).riskFlags.join('\n'),
+    /WINDOWS_SYSADMIN/,
+  );
+});
+
 test('bridge roles can be HIGH and unavailable profile links fall back to CV_TO_CREATE', () => {
   const { context, roles, rules, profiles, config } = createStrategyContext();
   const result = context.evaluateJobOpsJob_(
@@ -113,7 +162,7 @@ test('setup migrates standard rows once and preserves a customized configuration
     .getDataRange()
     .getValues()
     .find((row) => row[0] === 'CLOUD_SUPPORT_OPERATIONS');
-  cloudRow[headers.indexOf('NOTES')] = 'ConfiguraciÃ³n manual';
+  cloudRow[headers.indexOf('NOTES')] = 'Configuración manual';
   const rowNumber =
     roleSheet
       .getDataRange()
@@ -128,7 +177,7 @@ test('setup migrates standard rows once and preserves a customized configuration
   assert.ok(first.spreadsheet.seededRows.RoleFamilies > 0);
   assert.equal(second.spreadsheet.seededRows.RoleFamilies, 0);
   assert.equal(third.spreadsheet.seededRows.RoleFamilies, 0);
-  assert.equal(updated[headers.indexOf('NOTES')], 'ConfiguraciÃ³n manual');
+  assert.equal(updated[headers.indexOf('NOTES')], 'Configuración manual');
   assert.equal(
     roleSheet
       .getDataRange()
@@ -136,6 +185,56 @@ test('setup migrates standard rows once and preserves a customized configuration
       .filter((row) => row[0] === 'CLOUD_SUPPORT_OPERATIONS').length,
     1,
   );
+});
+
+test('setup migrates untouched prior strategy rows and keeps Computrabajo disabled by default', () => {
+  const services = createFakeGoogleServices();
+  const context = loadJobOpsContext(services.globals);
+  context.setupJobOps();
+
+  const roleSheet = services.spreadsheet.getSheetByName('RoleFamilies');
+  const roleValues = roleSheet.getDataRange().getValues();
+  const roleRowNumber = roleValues.findIndex((row) => row[0] === 'DEVOPS_CLOUDOPS_JR') + 1;
+  roleSheet
+    .getRange(roleRowNumber, 1, 1, 8)
+    .setValues([
+      [
+        'DEVOPS_CLOUDOPS_JR',
+        'devops junior,junior devops engineer,devops engineer jr,devops engineer i,devops engineer,devops analyst,devops associate,cloud devops analyst,cloud devops jr,desarrollador devops jr,ingeniero devops junior,analista devops,cloudops engineer,cloud operations engineer,cloud operations analyst,cloud infrastructure engineer jr,infrastructure automation engineer jr',
+        1,
+        'DEVOPS_PLATFORM',
+        8,
+        true,
+        'Roles directos DevOps/CloudOps de entrada.',
+        'DIRECT',
+      ],
+    ]);
+
+  const sourceSheet = services.spreadsheet.getSheetByName('Sources');
+  const sourceValues = sourceSheet.getDataRange().getValues();
+  const sourceRowNumber = sourceValues.findIndex((row) => row[0] === 'Computrabajo') + 1;
+  sourceSheet
+    .getRange(sourceRowNumber, 1, 1, 7)
+    .setValues([
+      [
+        'Computrabajo',
+        'computrabajo.com',
+        'ofertas,vacantes',
+        'parseGenericJob',
+        true,
+        0,
+        'Parser genérico inicial.',
+      ],
+    ]);
+
+  const result = context.setupJobOps();
+  const migratedRole = roleSheet.getDataRange().getValues()[roleRowNumber - 1];
+  const migratedSource = sourceSheet.getDataRange().getValues()[sourceRowNumber - 1];
+
+  assert.match(migratedRole[1], /cloud engineer/);
+  assert.equal(migratedSource[4], false);
+  assert.ok(result.spreadsheet.seededRows.RoleFamilies >= 1);
+  assert.ok(result.spreadsheet.seededRows.Sources >= 1);
 });
 
 test('digest uses soft strategy distribution without displacing stronger priorities', () => {
