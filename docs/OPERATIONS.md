@@ -12,6 +12,16 @@ La estrategia inicial combina cargos directos DevOps/Platform/SRE de entrada
 con roles puente de soporte cloud y de aplicaciones, release, Linux e backend
 con operación. Puedes ajustar todo desde las hojas sin otro despliegue.
 
+La configuración estándar no exige que el título contenga `Junior`: también
+reconoce títulos generales de DevOps, Cloud, Platform, SRE, infraestructura y
+backend Python, y usa reglas separadas para penalizar seniorities superiores.
+Premia remoto e híbrido, marca presencialidad superior a tres días, contratos a
+término fijo, turnos nocturnos y salarios publicados inferiores a COP 6.000.000.
+También reduce la prioridad de help desk L1, soporte de escritorio o hardware,
+Windows sysadmin, NOC solo de monitoreo, QA manual, datos/BI, WordPress, PHP y
+full stack genéricos. Todas estas reglas siguen siendo editables en
+`ScoringRules`.
+
 ## Funciones disponibles
 
 - `setupJobOps()`: crea o completa de forma no destructiva hojas, encabezados, configuración inicial, validaciones, formato y etiquetas.

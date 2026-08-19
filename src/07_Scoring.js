@@ -149,7 +149,11 @@ function buildJobOpsScoringContextText_(job) {
   const title = normalizeJobOpsSingleLineText_(job.position);
   const description = normalizeJobOpsMultilineText_(job.descriptionText);
   const technologies = (job.requiredTechnologies || []).join(' ');
-  const all = foldJobOpsText_(`${title}\n${description}\n${technologies}`);
+  const structuredFields = [job.location, job.workMode, job.salary, job.experienceRequested]
+    .map(normalizeJobOpsSingleLineText_)
+    .filter(Boolean)
+    .join('\n');
+  const all = foldJobOpsText_(`${title}\n${description}\n${technologies}\n${structuredFields}`);
   const lines = description.split('\n');
   const required = lines
     .filter((line) =>
