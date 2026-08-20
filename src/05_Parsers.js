@@ -87,6 +87,28 @@ function getEffectiveJobOpsMessage_(input) {
  * @param {Object[]} sourceDefinitions
  * @returns {Object}
  */
+/**
+ * Rejects platform administrative messages such as alert creation
+ * confirmations before they can be interpreted as vacancies.
+ *
+ * @param {Object} effective
+ * @returns {boolean}
+ */
+function isJobOpsAdministrativeMessage_(effective) {
+  const content = foldJobOpsText_(`${effective.subject}\n${effective.body}`);
+
+  const signals = [
+    'has creado tu alerta de empleo',
+    'te confirmamos que ahora tienes una nueva alerta de empleo',
+    'se ha activado tu alerta para empleos de',
+    'your job alert has been created',
+    'your job alert is now active',
+    'your job alert has been activated',
+    'job alert confirmation',
+  ];
+
+  return signals.some((signal) => content.includes(foldJobOpsText_(signal)));
+}
 function detectJobOpsSource_(input, sourceDefinitions) {
   const effective = getEffectiveJobOpsMessage_(input);
   const sender = parseJobOpsSender_(effective.from);
@@ -94,6 +116,15 @@ function detectJobOpsSource_(input, sourceDefinitions) {
   const senderDomain = foldedSender.includes('@') ? foldedSender.split('@').pop() : foldedSender;
   const foldedSubject = foldJobOpsText_(effective.subject);
   const foldedContent = foldJobOpsText_(`${effective.subject}\n${effective.body}`);
+  if (isJobOpsAdministrativeMessage_(effective)) {
+    return {
+      candidate: false,
+      source: 'Generic',
+      parserName: 'parseGenericJob',
+      isRecruiter: false,
+      effective,
+    };
+  }
 
   for (const definition of sourceDefinitions) {
     if (['recruiter', 'generic'].includes(foldJobOpsText_(definition.source))) {

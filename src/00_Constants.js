@@ -1336,7 +1336,7 @@ const JOBOPS_DEFAULT_SOURCE_ROWS = Object.freeze([
   ],
   [
     'ElEmpleo',
-    'elempleo.com',
+    'elempleo.com,correoelempleo.com',
     'ofertas,vacantes',
     'parseGenericJob',
     true,
