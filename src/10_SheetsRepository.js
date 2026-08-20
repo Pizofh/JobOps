@@ -201,7 +201,11 @@ function appendMissingJobOpsSeedRows_(sheet, seedRows) {
     return 0;
   }
 
-  const startRow = sheet.getLastRow() + 1;
+  const lastKeyedRow = existingKeys.reduce(
+  (last, key, index) => (normalizeJobOpsText_(key) ? index + 2 : last),
+  1,
+);
+const startRow = lastKeyedRow + 1;
   ensureJobOpsSheetSize_(sheet, startRow + missingRows.length - 1, missingRows[0].length);
   sheet.getRange(startRow, 1, missingRows.length, missingRows[0].length).setValues(missingRows);
   return missingRows.length;
@@ -262,11 +266,25 @@ function upsertJobOpsStandardSeedRows_(sheet, seedRows, legacySeedRows) {
     sheet.getRange(update.rowNumber, 1, 1, update.values.length).setValues([update.values]);
   }
 
-  if (missingRows.length > 0) {
-    const startRow = sheet.getLastRow() + 1;
-    ensureJobOpsSheetSize_(sheet, startRow + missingRows.length - 1, missingRows[0].length);
-    sheet.getRange(startRow, 1, missingRows.length, missingRows[0].length).setValues(missingRows);
-  }
+if (missingRows.length > 0) {
+  const lastKeyedIndex = rows.reduce(
+    (lastIndex, row, index) =>
+      normalizeJobOpsText_(row[0]) ? index : lastIndex,
+    -1,
+  );
+
+  const startRow = lastKeyedIndex >= 0 ? lastKeyedIndex + 3 : 2;
+
+  ensureJobOpsSheetSize_(
+    sheet,
+    startRow + missingRows.length - 1,
+    missingRows[0].length,
+  );
+
+  sheet
+    .getRange(startRow, 1, missingRows.length, missingRows[0].length)
+    .setValues(missingRows);
+}
 
   return { created: missingRows.length, updated: updates.length, preserved };
 }
@@ -854,7 +872,16 @@ function appendJobOpsRecords_(spreadsheet, sheetName, headers, records) {
   }
 
   const sheet = getRequiredJobOpsSheet_(spreadsheet, sheetName);
-  const startRow = sheet.getLastRow() + 1;
+  const keyValues = sheet
+  .getRange(2, 1, Math.max(sheet.getMaxRows() - 1, 1), 1)
+  .getValues();
+
+const lastKeyedRow = keyValues.reduce(
+  (last, row, index) => (normalizeJobOpsText_(row[0]) ? index + 2 : last),
+  1,
+);
+
+const startRow = lastKeyedRow + 1;
   const rows = records.map((record) => headers.map((header) => record[header] ?? ''));
   ensureJobOpsSheetSize_(sheet, startRow + rows.length - 1, headers.length);
   sheet.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
