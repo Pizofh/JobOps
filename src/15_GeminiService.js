@@ -1,4 +1,4 @@
-const JOBOPS_GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-lite';
+const JOBOPS_GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const JOBOPS_GEMINI_MAX_INPUT_CHARS = 30000;
 
 /**
@@ -48,15 +48,19 @@ function isJobOpsGeminiConfigured_() {
 
 /**
  * Reads optional Gemini settings from Script Properties without logging them.
+ * The retired 2.5 Flash Lite model is migrated in runtime so an old property
+ * does not break users who cannot edit Script Properties immediately.
  *
  * @returns {{apiKey: string, model: string}}
  */
 function readJobOpsGeminiSettings_() {
   const properties = PropertiesService.getScriptProperties();
   const apiKey = normalizeJobOpsSingleLineText_(properties.getProperty('GEMINI_API_KEY'));
+  const configuredModel = normalizeJobOpsSingleLineText_(properties.getProperty('GEMINI_MODEL'));
   const model =
-    normalizeJobOpsSingleLineText_(properties.getProperty('GEMINI_MODEL')) ||
-    JOBOPS_GEMINI_DEFAULT_MODEL;
+    !configuredModel || configuredModel === 'gemini-2.5-flash-lite'
+      ? JOBOPS_GEMINI_DEFAULT_MODEL
+      : configuredModel;
 
   if (!apiKey) {
     throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, 'GEMINI_API_KEY is not configured.');
