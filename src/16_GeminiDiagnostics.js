@@ -1,6 +1,6 @@
 /* exported testGeminiConnection */
 
-const JOBOPS_GEMINI_DIAGNOSTIC_DEFAULT_MODEL = 'gemini-2.5-flash-lite';
+const JOBOPS_GEMINI_DIAGNOSTIC_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 
 /**
  * Tests Gemini connectivity with one minimal request. It does not read Gmail or
@@ -11,9 +11,11 @@ const JOBOPS_GEMINI_DIAGNOSTIC_DEFAULT_MODEL = 'gemini-2.5-flash-lite';
 function testGeminiConnection() {
   const properties = PropertiesService.getScriptProperties();
   const apiKey = String(properties.getProperty('GEMINI_API_KEY') || '').trim();
+  const configuredModel = String(properties.getProperty('GEMINI_MODEL') || '').trim();
   const model =
-    String(properties.getProperty('GEMINI_MODEL') || '').trim() ||
-    JOBOPS_GEMINI_DIAGNOSTIC_DEFAULT_MODEL;
+    !configuredModel || configuredModel === 'gemini-2.5-flash-lite'
+      ? JOBOPS_GEMINI_DIAGNOSTIC_DEFAULT_MODEL
+      : configuredModel;
 
   if (!apiKey) {
     const result = {
