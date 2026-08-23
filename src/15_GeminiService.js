@@ -117,12 +117,18 @@ function extractJobOpsIndeedJobsWithGemini_(input, detection) {
   try {
     result = JSON.parse(text);
   } catch {
-    throw createJobOpsError_(JOBOPS_ERROR_CODES.PARSER, 'Gemini structured output was invalid JSON.');
+    throw createJobOpsError_(
+      JOBOPS_ERROR_CODES.PARSER,
+      'Gemini structured output was invalid JSON.',
+    );
   }
 
   const validated = validateJobOpsAiJobs_(result, evidence);
   if (validated.length === 0) {
-    throw createJobOpsError_(JOBOPS_ERROR_CODES.PARSER, 'Gemini did not extract any valid Indeed jobs.');
+    throw createJobOpsError_(
+      JOBOPS_ERROR_CODES.PARSER,
+      'Gemini did not extract any valid Indeed jobs.',
+    );
   }
 
   return validated.map((job) => normalizeJobOpsAiJob_(job, detection));
@@ -219,9 +225,7 @@ function redactJobOpsAiUrls_(value, jobLinks) {
     if (!link) {
       return '[link removed]';
     }
-    return link.sourceJobId
-      ? `[${link.ref} sourceJobId=${link.sourceJobId}]`
-      : `[${link.ref}]`;
+    return link.sourceJobId ? `[${link.ref} sourceJobId=${link.sourceJobId}]` : `[${link.ref}]`;
   });
 }
 
@@ -329,7 +333,10 @@ function extractJobOpsGeminiResponseText_(payload) {
     payload && payload.candidates && payload.candidates[0] && payload.candidates[0].content
       ? payload.candidates[0].content.parts || []
       : [];
-  const text = parts.map((part) => normalizeJobOpsMultilineText_(part.text)).filter(Boolean).join('\n');
+  const text = parts
+    .map((part) => normalizeJobOpsMultilineText_(part.text))
+    .filter(Boolean)
+    .join('\n');
 
   if (!text) {
     throw createJobOpsError_(JOBOPS_ERROR_CODES.PARSER, 'Gemini returned no structured content.');
@@ -364,7 +371,10 @@ function validateJobOpsAiJobs_(result, evidence) {
       continue;
     }
 
-    const modelSourceJobId = normalizeJobOpsSingleLineText_(rawJob && rawJob.sourceJobId).slice(0, 200);
+    const modelSourceJobId = normalizeJobOpsSingleLineText_(rawJob && rawJob.sourceJobId).slice(
+      0,
+      200,
+    );
     if (modelSourceJobId && link.sourceJobId && modelSourceJobId !== link.sourceJobId) {
       continue;
     }
