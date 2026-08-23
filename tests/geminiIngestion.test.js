@@ -6,10 +6,17 @@ const { loadJobOpsContext } = require('./helpers/load-jobops');
 test('Gemini validation keeps separate Indeed jobs from one digest', () => {
   const context = loadJobOpsContext();
   const evidence = {
-    allowedSourceJobIds: ['aaa111', 'bbb222'],
-    allowedUrls: [
-      'https://co.indeed.com/rc/clk/dl?jk=aaa111',
-      'https://co.indeed.com/rc/clk/dl?jk=bbb222',
+    jobLinks: [
+      {
+        ref: 'JOB_LINK_1',
+        url: 'https://co.indeed.com/rc/clk/dl?jk=aaa111',
+        sourceJobId: 'aaa111',
+      },
+      {
+        ref: 'JOB_LINK_2',
+        url: 'https://co.indeed.com/rc/clk/dl?jk=bbb222',
+        sourceJobId: 'bbb222',
+      },
     ],
   };
 
@@ -23,7 +30,7 @@ test('Gemini validation keeps separate Indeed jobs from one digest', () => {
           salary: '',
           experienceRequested: '',
           workMode: 'UNKNOWN',
-          jobUrl: 'https://co.indeed.com/rc/clk/dl?jk=aaa111',
+          jobLinkRef: 'JOB_LINK_1',
           sourceJobId: 'aaa111',
           requiredTechnologies: ['Linux'],
           descriptionText: 'Linux role',
@@ -35,7 +42,7 @@ test('Gemini validation keeps separate Indeed jobs from one digest', () => {
           salary: '',
           experienceRequested: '',
           workMode: 'HYBRID',
-          jobUrl: 'https://co.indeed.com/rc/clk/dl?jk=bbb222',
+          jobLinkRef: 'JOB_LINK_2',
           sourceJobId: 'bbb222',
           requiredTechnologies: ['Docker'],
           descriptionText: 'Docker role',
@@ -47,14 +54,20 @@ test('Gemini validation keeps separate Indeed jobs from one digest', () => {
 
   assert.equal(jobs.length, 2);
   assert.equal(jobs[0].sourceJobId, 'aaa111');
+  assert.equal(jobs[0].jobUrl, 'https://co.indeed.com/rc/clk/dl?jk=aaa111');
   assert.equal(jobs[1].sourceJobId, 'bbb222');
 });
 
-test('Gemini validation rejects hallucinated identifiers and URLs', () => {
+test('Gemini validation rejects hallucinated link references or identifiers', () => {
   const context = loadJobOpsContext();
   const evidence = {
-    allowedSourceJobIds: ['real123'],
-    allowedUrls: ['https://co.indeed.com/rc/clk/dl?jk=real123'],
+    jobLinks: [
+      {
+        ref: 'JOB_LINK_1',
+        url: 'https://co.indeed.com/rc/clk/dl?jk=real123',
+        sourceJobId: 'real123',
+      },
+    ],
   };
 
   const jobs = context.validateJobOpsAiJobs_(
@@ -67,8 +80,20 @@ test('Gemini validation rejects hallucinated identifiers and URLs', () => {
           salary: '',
           experienceRequested: '',
           workMode: 'UNKNOWN',
-          jobUrl: 'https://co.indeed.com/rc/clk/dl?jk=fake999',
+          jobLinkRef: 'JOB_LINK_1',
           sourceJobId: 'fake999',
+          requiredTechnologies: [],
+          descriptionText: '',
+        },
+        {
+          position: 'Platform Engineer',
+          company: 'Imaginary Corp',
+          location: '',
+          salary: '',
+          experienceRequested: '',
+          workMode: 'UNKNOWN',
+          jobLinkRef: 'JOB_LINK_999',
+          sourceJobId: '',
           requiredTechnologies: [],
           descriptionText: '',
         },
@@ -96,16 +121,29 @@ test('jobs in the same Gmail message receive different batch identities', () => 
   });
 
   assert.notEqual(first, second);
-  assert.notEqual(context.buildJobOpsBatchJobId_(input, { sourceJobId: 'aaa111' }), context.buildJobOpsBatchJobId_(input, { sourceJobId: 'bbb222' }));
+  assert.notEqual(
+    context.buildJobOpsBatchJobId_(input, { sourceJobId: 'aaa111' }),
+    context.buildJobOpsBatchJobId_(input, { sourceJobId: 'bbb222' }),
+  );
 });
 
-test('AI evidence strips email addresses and Indeed account-management footer', () => {
+test('AI evidence strips email addresses, footer data and personalized URLs', () => {
   const context = loadJobOpsContext();
-  const sanitized = context.stripJobOpsAiNoise_(
+  const stripped = context.stripJobOpsAiNoise_(
     'DevOps Engineer\nAcme\nsteve@example.com\nAdministrar esta alerta de empleo\nsecret-token',
   );
+  const links = context.buildJobOpsIndeedJobLinks_([
+    'https://co.indeed.com/rc/clk/dl?jk=aaa111&tk=private-token',
+  ]);
+  const redacted = context.redactJobOpsAiUrls_(
+    'DevOps Engineer <https://co.indeed.com/rc/clk/dl?jk=aaa111&tk=private-token>',
+    links,
+  );
 
-  assert.ok(sanitized.includes('DevOps Engineer'));
-  assert.ok(sanitized.includes('[email removed]'));
-  assert.equal(sanitized.includes('secret-token'), false);
+  assert.ok(stripped.includes('DevOps Engineer'));
+  assert.ok(stripped.includes('[email removed]'));
+  assert.equal(stripped.includes('secret-token'), false);
+  assert.ok(redacted.includes('JOB_LINK_1'));
+  assert.ok(redacted.includes('sourceJobId=aaa111'));
+  assert.equal(redacted.includes('private-token'), false);
 });
