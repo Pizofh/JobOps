@@ -284,31 +284,31 @@ function buildJobOpsGeminiRequest_(evidence) {
 }
 
 /**
- * JSON Schema for Gemini structured output.
+ * Conservative JSON Schema for Gemini structured output. Validation constraints
+ * such as enums, maxItems and additionalProperties are enforced locally instead
+ * of being sent to the model because some Gemini 3.5 Flash-Lite REST backends
+ * reject richer schema keywords with a generic INVALID_ARGUMENT.
  *
  * @returns {Object}
  */
 function getJobOpsGeminiJobSchema_() {
   return {
     type: 'object',
-    additionalProperties: false,
     properties: {
       jobs: {
         type: 'array',
-        maxItems: 50,
         items: {
           type: 'object',
-          additionalProperties: false,
           properties: {
             position: { type: 'string' },
             company: { type: 'string' },
             location: { type: 'string' },
             salary: { type: 'string' },
             experienceRequested: { type: 'string' },
-            workMode: { type: 'string', enum: ['REMOTE', 'HYBRID', 'ONSITE', 'UNKNOWN'] },
+            workMode: { type: 'string' },
             jobLinkRef: { type: 'string' },
             sourceJobId: { type: 'string' },
-            requiredTechnologies: { type: 'array', items: { type: 'string' }, maxItems: 30 },
+            requiredTechnologies: { type: 'array', items: { type: 'string' } },
             descriptionText: { type: 'string' },
           },
           required: [
