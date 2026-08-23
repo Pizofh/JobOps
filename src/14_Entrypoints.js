@@ -174,19 +174,9 @@ function runJobOpsIngestion_(forceDryRun) {
               Object.assign(
                 duplicateMatch.target.record,
                 evaluateJobOpsJob_(
-                  {
-                    position: duplicateMatch.target.record.POSITION,
+                  buildJobOpsEvaluationInputFromRecord_(duplicateMatch.target.record, {
                     descriptionText: parsed.descriptionText,
-                    requiredTechnologies: normalizeJobOpsSingleLineText_(
-                      duplicateMatch.target.record.REQUIRED_TECHNOLOGIES,
-                    )
-                      .split(',')
-                      .map((item) => item.trim())
-                      .filter(Boolean),
-                    isRecruiter:
-                      duplicateMatch.target.record.SOURCE === 'Recruiter' ||
-                      Boolean(duplicateMatch.target.record.RECRUITER_EMAIL),
-                  },
+                  }),
                   evaluationContext,
                 ),
               );
@@ -294,6 +284,31 @@ function createJobOpsEvaluationContext_(spreadsheet, config) {
 }
 
 /**
+ * Converts a stored Jobs row back into the complete scoring input contract.
+ * Optional overrides are useful when a fresh duplicate provides richer text.
+ *
+ * @param {Object<string, *>} record
+ * @param {Object=} overrides
+ * @returns {Object}
+ */
+function buildJobOpsEvaluationInputFromRecord_(record, overrides) {
+  return {
+    position: record.POSITION,
+    descriptionText: '',
+    requiredTechnologies: normalizeJobOpsSingleLineText_(record.REQUIRED_TECHNOLOGIES)
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+    location: record.LOCATION,
+    workMode: record.WORK_MODE,
+    salary: record.SALARY,
+    experienceRequested: record.EXPERIENCE_REQUESTED,
+    isRecruiter: record.SOURCE === 'Recruiter' || Boolean(record.RECRUITER_EMAIL),
+    ...(overrides || {}),
+  };
+}
+
+/**
  * Reads the current jobs and errors, then sends a digest when it has content.
  *
  * @returns {Object}
@@ -394,18 +409,7 @@ function runJobOpsRescore_() {
       const record = target.record;
       Object.assign(
         record,
-        evaluateJobOpsJob_(
-          {
-            position: record.POSITION,
-            descriptionText: '',
-            requiredTechnologies: normalizeJobOpsSingleLineText_(record.REQUIRED_TECHNOLOGIES)
-              .split(',')
-              .map((item) => item.trim())
-              .filter(Boolean),
-            isRecruiter: record.SOURCE === 'Recruiter' || Boolean(record.RECRUITER_EMAIL),
-          },
-          evaluationContext,
-        ),
+        evaluateJobOpsJob_(buildJobOpsEvaluationInputFromRecord_(record), evaluationContext),
       );
     }
 

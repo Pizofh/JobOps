@@ -62,14 +62,50 @@ test('editable role, score and CV settings produce an explainable recommendation
   );
 
   assert.equal(result.ROLE_FAMILY, 'DEVOPS_PLATFORM_SRE');
-  assert.equal(result.MATCH_SCORE, 8);
-  assert.equal(result.PRIORITY, 'OPTIONAL');
+  assert.equal(result.MATCH_SCORE, 12);
+  assert.equal(result.PRIORITY, 'REVIEW');
   assert.equal(result.RECOMMENDED_CV, 'DEVOPS_PLATFORM');
   assert.equal(result.CV_LINK, 'https://drive.example/devops');
+  assert.match(result.STRONG_MATCHES, /Strategic BRIDGE \+4/);
   assert.match(result.STRONG_MATCHES, /Linux \+4/);
   assert.match(result.STRONG_MATCHES, /Docker \+4/);
   assert.match(result.STRONG_MATCHES, /Recruiter \+5/);
   assert.match(result.RISK_FLAGS, /SENIOR_TITLE -5/);
+});
+
+test('strategic role level adds a transparent baseline score', () => {
+  const context = loadJobOpsContext();
+  const roles = context.parseJobOpsRoleFamilies_([
+    [
+      'ROLE_FAMILY',
+      'PATTERNS',
+      'PRIORITY_ORDER',
+      'RECOMMENDED_CV_PROFILE',
+      'MINIMUM_REVIEW_SCORE',
+      'ENABLED',
+      'STRATEGIC_LEVEL',
+    ],
+    ['DIRECT_ROLE', 'devops engineer', 1, 'CV_TO_CREATE', 0, true, 'DIRECT'],
+    ['UNRELATED', '', 99, 'CV_TO_CREATE', 999, true, 'UNRELATED'],
+  ]);
+  const result = context.evaluateJobOpsJob_(
+    {
+      position: 'DevOps Engineer',
+      descriptionText: '',
+      requiredTechnologies: [],
+      isRecruiter: false,
+    },
+    {
+      roleFamilies: roles,
+      scoringRules: [],
+      cvProfiles: [],
+      config: scoringConfig(),
+    },
+  );
+
+  assert.equal(result.MATCH_SCORE, 6);
+  assert.equal(result.PRIORITY, 'OPTIONAL');
+  assert.match(result.STRONG_MATCHES, /Strategic DIRECT \+6/);
 });
 
 test('invalid editable regex rules fail with a configuration error', () => {
@@ -82,6 +118,26 @@ test('invalid editable regex rules fail with a configuration error', () => {
     () => context.parseJobOpsScoringRules_(values),
     (error) => error.code === 'CONFIGURATION_ERROR',
   );
+});
+
+test('stored record evaluation keeps structured scoring fields', () => {
+  const context = loadJobOpsContext();
+  const input = context.buildJobOpsEvaluationInputFromRecord_({
+    POSITION: 'Cloud Engineer',
+    REQUIRED_TECHNOLOGIES: 'Linux, AWS',
+    LOCATION: 'Bogota',
+    WORK_MODE: 'REMOTE',
+    SALARY: 'COP 5.500.000 mensuales',
+    EXPERIENCE_REQUESTED: '2 years',
+    SOURCE: 'Indeed',
+    RECRUITER_EMAIL: '',
+  });
+
+  assert.equal(input.location, 'Bogota');
+  assert.equal(input.workMode, 'REMOTE');
+  assert.equal(input.salary, 'COP 5.500.000 mensuales');
+  assert.equal(input.experienceRequested, '2 years');
+  assert.deepEqual(Array.from(input.requiredTechnologies), ['Linux', 'AWS']);
 });
 
 test('rescoreJobs updates only evaluation fields and retains manual job values', () => {
@@ -115,7 +171,9 @@ test('rescoreJobs updates only evaluation fields and retains manual job values',
   assert.equal(result.phase, 4);
   assert.equal(result.rescoredJobs, 1);
   assert.equal(row[headers.indexOf('ROLE_FAMILY')], 'DEVOPS_CLOUDOPS_JR');
-  assert.equal(row[headers.indexOf('MATCH_SCORE')], 14);
+  assert.equal(row[headers.indexOf('MATCH_SCORE')], 24);
+  assert.equal(row[headers.indexOf('PRIORITY')], 'HIGH');
+  assert.match(row[headers.indexOf('STRONG_MATCHES')], /REMOTE \+4/);
   assert.equal(row[headers.indexOf('STATUS')], 'APPLIED');
   assert.equal(row[headers.indexOf('APPLIED_DATE')], '2026-07-15');
   assert.equal(row[headers.indexOf('FOLLOW_UP_DATE')], '2026-07-22');

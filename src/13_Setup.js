@@ -12,6 +12,7 @@ function runJobOpsSetup_() {
   let spreadsheetSummary;
   try {
     spreadsheetSummary = setupJobOpsSpreadsheet_(spreadsheet);
+    spreadsheetSummary.migratedEntryLevelRule = migrateJobOpsEntryLevelScoringRule_(spreadsheet);
   } catch (error) {
     if (error.name === 'JobOpsError' && error.code) {
       throw error;
