@@ -47,9 +47,10 @@ test('entry-level migration preserves a user-customized BONUS_JUNIOR rule', () =
   const headers = values[0];
   const rowNumber = values.findIndex((candidate) => candidate[0] === 'BONUS_JUNIOR') + 1;
   const patternColumn = headers.indexOf('PATTERN') + 1;
-  sheet.getRange(rowNumber, patternColumn).setValue('custom junior signal');
+  sheet.getRange(rowNumber, patternColumn).setValues([['custom junior signal']]);
 
   const second = context.setupJobOps();
+  const updatedValues = sheet.getDataRange().getValues();
   assert.equal(second.spreadsheet.migratedEntryLevelRule, false);
-  assert.equal(sheet.getRange(rowNumber, patternColumn).getValue(), 'custom junior signal');
+  assert.equal(updatedValues[rowNumber - 1][patternColumn - 1], 'custom junior signal');
 });
