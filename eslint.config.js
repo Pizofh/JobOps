@@ -88,6 +88,7 @@ module.exports = [
         getJobOpsRequiredHeaderIndexes_: 'readonly',
         getJobOpsScriptPropertyErrors_: 'readonly',
         getJobOpsSheetSchemaErrors_: 'readonly',
+        hashJobOpsText_: 'readonly',
         isDuplicateJobOpsCandidate_: 'readonly',
         isJobOpsUsableDate_: 'readonly',
         jobOpsHtmlToText_: 'readonly',
