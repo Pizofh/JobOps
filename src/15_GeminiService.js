@@ -275,7 +275,7 @@ function buildJobOpsGeminiRequest_(evidence) {
     generationConfig: {
       responseFormat: {
         text: {
-          mimeType: 'application/json',
+          mimeType: 'APPLICATION_JSON',
           schema: getJobOpsGeminiJobSchema_(),
         },
       },
