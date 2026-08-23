@@ -105,7 +105,7 @@ test('Gemini validation rejects hallucinated link references or identifiers', ()
   assert.equal(jobs.length, 0);
 });
 
-test('Gemini request uses current responseFormat structured output shape', () => {
+test('Gemini request uses conservative current responseFormat structured output shape', () => {
   const context = loadJobOpsContext();
   const request = context.buildJobOpsGeminiRequest_({
     subject: 'DevOps roles',
@@ -113,8 +113,15 @@ test('Gemini request uses current responseFormat structured output shape', () =>
     jobLinks: [{ ref: 'JOB_LINK_1', sourceJobId: 'aaa111' }],
   });
 
-  assert.equal(request.generationConfig.responseFormat.text.mimeType, 'APPLICATION_JSON');
-  assert.equal(request.generationConfig.responseFormat.text.schema.type, 'object');
+  const textFormat = request.generationConfig.responseFormat.text;
+  assert.equal(textFormat.mimeType, 'APPLICATION_JSON');
+  assert.equal(textFormat.schema.type, 'object');
+  assert.equal('additionalProperties' in textFormat.schema, false);
+  assert.equal('maxItems' in textFormat.schema.properties.jobs, false);
+  assert.equal(
+    'enum' in textFormat.schema.properties.jobs.items.properties.workMode,
+    false,
+  );
   assert.equal('responseMimeType' in request.generationConfig, false);
   assert.equal('responseJsonSchema' in request.generationConfig, false);
   assert.equal('temperature' in request.generationConfig, false);
