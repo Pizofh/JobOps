@@ -129,34 +129,66 @@ function extractJobOpsIndeedJobsWithGemini_(input, detection) {
 }
 
 /**
- * Creates privacy-limited evidence for Gemini. SMTP headers, forwarding account
- * addresses and unsubscribe links are not included.
+ * Creates privacy-limited evidence for Gemini. Personalized Indeed URLs remain
+ * local and are represented to the model only by opaque JOB_LINK_n references.
  *
  * @param {Object} input
  * @param {Object} detection
- * @returns {{source: string, subject: string, body: string, allowedUrls: string[], allowedSourceJobIds: string[]}}
+ * @returns {{source: string, subject: string, body: string, jobLinks: Object[]}}
  */
 function buildJobOpsAiEmailEvidence_(input, detection) {
   const effective = detection.effective || getEffectiveJobOpsMessage_(input);
-  const body = stripJobOpsAiNoise_(effective.body).slice(0, JOBOPS_GEMINI_MAX_INPUT_CHARS);
   const urls = extractJobOpsUrls_(`${effective.body}\n${input.htmlBody || ''}`);
-  const allowedUrls = urls.filter((url) => /(?:^|\.)indeed\.com(?:\/|$)/iu.test(getJobOpsUrlHost_(url)));
-  const allowedSourceJobIds = Array.from(
-    new Set(allowedUrls.map(extractJobOpsSourceJobId_).filter(Boolean)),
+  const jobLinks = buildJobOpsIndeedJobLinks_(urls);
+  const body = redactJobOpsAiUrls_(stripJobOpsAiNoise_(effective.body), jobLinks).slice(
+    0,
+    JOBOPS_GEMINI_MAX_INPUT_CHARS,
   );
 
   return {
     source: detection.source,
     subject: normalizeJobOpsSingleLineText_(effective.subject).slice(0, 1000),
     body,
-    allowedUrls,
-    allowedSourceJobIds,
+    jobLinks,
   };
 }
 
 /**
+ * Keeps only Indeed links that look like individual job cards and assigns an
+ * opaque reference. The original URL is retained locally for later storage.
+ *
+ * @param {string[]} urls
+ * @returns {{ref: string, url: string, sourceJobId: string}[]}
+ */
+function buildJobOpsIndeedJobLinks_(urls) {
+  const links = [];
+  const seen = new Set();
+
+  for (const url of urls) {
+    const canonicalUrl = canonicalizeJobOpsUrl_(url);
+    const host = getJobOpsUrlHost_(canonicalUrl);
+    const sourceJobId = extractJobOpsSourceJobId_(canonicalUrl);
+    const looksLikeJobCard =
+      sourceJobId || /\/rc\/clk\/dl(?:\?|$)|\/pagead\/clk\/dl(?:\?|$)/iu.test(canonicalUrl);
+
+    if (!/(?:^|\.)indeed\.com$/iu.test(host) || !looksLikeJobCard || seen.has(canonicalUrl)) {
+      continue;
+    }
+
+    seen.add(canonicalUrl);
+    links.push({
+      ref: `JOB_LINK_${links.length + 1}`,
+      url: canonicalUrl,
+      sourceJobId,
+    });
+  }
+
+  return links;
+}
+
+/**
  * Removes common footer and account-management noise before an email is sent to
- * Gemini. It deliberately keeps job-card text and URLs.
+ * Gemini. Email addresses are removed as well.
  *
  * @param {*} value
  * @returns {string}
@@ -168,6 +200,29 @@ function stripJobOpsAiNoise_(value) {
     .replace(/\n(?:Cancelar suscripci[oó]n|Unsubscribe)[\s\S]*$/iu, '')
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu, '[email removed]')
     .trim();
+}
+
+/**
+ * Replaces URLs with opaque job-link references or a generic removed marker.
+ * Personalized tracking/query values therefore never enter the Gemini prompt.
+ *
+ * @param {*} value
+ * @param {{ref: string, url: string, sourceJobId: string}[]} jobLinks
+ * @returns {string}
+ */
+function redactJobOpsAiUrls_(value, jobLinks) {
+  const references = new Map(jobLinks.map((link) => [canonicalizeJobOpsUrl_(link.url), link]));
+
+  return normalizeJobOpsMultilineText_(value).replace(/https?:\/\/[^\s<>"']+/giu, (rawUrl) => {
+    const canonicalUrl = canonicalizeJobOpsUrl_(rawUrl);
+    const link = references.get(canonicalUrl);
+    if (!link) {
+      return '[link removed]';
+    }
+    return link.sourceJobId
+      ? `[${link.ref} sourceJobId=${link.sourceJobId}]`
+      : `[${link.ref}]`;
+  });
 }
 
 /**
@@ -188,21 +243,22 @@ function getJobOpsUrlHost_(value) {
  * @returns {Object}
  */
 function buildJobOpsGeminiRequest_(evidence) {
+  const allowedLinks = evidence.jobLinks
+    .map((link) => `${link.ref}${link.sourceJobId ? ` sourceJobId=${link.sourceJobId}` : ''}`)
+    .join('\n');
   const prompt = [
     'Extract every distinct job vacancy explicitly present in this Indeed job-alert email.',
-    'Do not invent vacancies, companies, URLs, technologies, salary, experience, or work mode.',
+    'Do not invent vacancies, companies, technologies, salary, experience, work mode, or link references.',
     'One email can contain many independent job cards. Return one array item per vacancy.',
     'Use an empty string or empty array when a field is absent.',
-    'The sourceJobId must be the Indeed jk/job identifier when visible in the supplied evidence.',
-    'The jobUrl must be one of the job-detail URLs present in the supplied evidence when possible.',
+    'jobLinkRef must be one of the allowed JOB_LINK_n references associated with that vacancy.',
+    'sourceJobId must match the identifier shown beside that JOB_LINK_n when one is present.',
     '',
     `SUBJECT:\n${evidence.subject}`,
     '',
     `BODY:\n${evidence.body}`,
     '',
-    `ALLOWED_SOURCE_JOB_IDS:\n${evidence.allowedSourceJobIds.join('\n')}`,
-    '',
-    `ALLOWED_INDEED_URLS:\n${evidence.allowedUrls.join('\n')}`,
+    `ALLOWED_JOB_LINKS:\n${allowedLinks}`,
   ].join('\n');
 
   return {
@@ -238,7 +294,7 @@ function getJobOpsGeminiJobSchema_() {
             salary: { type: 'string' },
             experienceRequested: { type: 'string' },
             workMode: { type: 'string', enum: ['REMOTE', 'HYBRID', 'ONSITE', 'UNKNOWN'] },
-            jobUrl: { type: 'string' },
+            jobLinkRef: { type: 'string' },
             sourceJobId: { type: 'string' },
             requiredTechnologies: { type: 'array', items: { type: 'string' }, maxItems: 30 },
             descriptionText: { type: 'string' },
@@ -250,7 +306,7 @@ function getJobOpsGeminiJobSchema_() {
             'salary',
             'experienceRequested',
             'workMode',
-            'jobUrl',
+            'jobLinkRef',
             'sourceJobId',
             'requiredTechnologies',
             'descriptionText',
@@ -282,8 +338,8 @@ function extractJobOpsGeminiResponseText_(payload) {
 }
 
 /**
- * Validates model output against evidence from the original email. A model URL
- * or source ID is accepted only when it was present in that email.
+ * Validates model output against local evidence. The model never supplies the
+ * stored URL; JobOps reconstructs it from the opaque jobLinkRef.
  *
  * @param {*} result
  * @param {Object} evidence
@@ -294,33 +350,27 @@ function validateJobOpsAiJobs_(result, evidence) {
     throw createJobOpsError_(JOBOPS_ERROR_CODES.PARSER, 'Gemini output is missing jobs[].');
   }
 
-  const allowedIds = new Set(evidence.allowedSourceJobIds.map(normalizeJobOpsSingleLineText_));
-  const allowedUrls = new Set(evidence.allowedUrls.map(canonicalizeJobOpsUrl_));
+  const linksByRef = new Map(evidence.jobLinks.map((link) => [link.ref, link]));
   const seen = new Set();
   const jobs = [];
 
   for (const rawJob of result.jobs) {
     const position = cleanJobOpsParsedField_(rawJob && rawJob.position);
     const company = cleanJobOpsParsedField_(rawJob && rawJob.company);
-    let sourceJobId = normalizeJobOpsSingleLineText_(rawJob && rawJob.sourceJobId).slice(0, 200);
-    let jobUrl = canonicalizeJobOpsUrl_(rawJob && rawJob.jobUrl);
+    const jobLinkRef = normalizeJobOpsSingleLineText_(rawJob && rawJob.jobLinkRef);
+    const link = linksByRef.get(jobLinkRef);
 
-    if (!position || !company) {
-      continue;
-    }
-    if (sourceJobId && !allowedIds.has(sourceJobId)) {
-      sourceJobId = '';
-    }
-    if (jobUrl && !allowedUrls.has(jobUrl)) {
-      jobUrl = '';
-    }
-    if (!sourceJobId && jobUrl) {
-      sourceJobId = extractJobOpsSourceJobId_(jobUrl);
-    }
-    if (!sourceJobId && !jobUrl) {
+    if (!position || !company || !link) {
       continue;
     }
 
+    const modelSourceJobId = normalizeJobOpsSingleLineText_(rawJob && rawJob.sourceJobId).slice(0, 200);
+    if (modelSourceJobId && link.sourceJobId && modelSourceJobId !== link.sourceJobId) {
+      continue;
+    }
+
+    const sourceJobId = link.sourceJobId || modelSourceJobId;
+    const jobUrl = link.url;
     const identity = sourceJobId ? `ID:${sourceJobId}` : `URL:${jobUrl}`;
     if (seen.has(identity)) {
       continue;
