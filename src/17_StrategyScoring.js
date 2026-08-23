@@ -53,6 +53,6 @@ function migrateJobOpsEntryLevelScoringRule_(spreadsheet) {
     return false;
   }
 
-  sheet.getRange(rowIndex + 1, indexes.PATTERN + 1).setValue(JOBOPS_ENTRY_LEVEL_PATTERN);
+  sheet.getRange(rowIndex + 1, indexes.PATTERN + 1).setValues([[JOBOPS_ENTRY_LEVEL_PATTERN]]);
   return true;
 }
