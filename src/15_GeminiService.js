@@ -245,7 +245,8 @@ function getJobOpsUrlHost_(value) {
 }
 
 /**
- * Builds the Gemini generateContent request with strict structured output.
+ * Builds the Gemini generateContent request with strict structured output using
+ * the responseFormat shape required by current Gemini 3.5+ REST models.
  *
  * @param {Object} evidence
  * @returns {Object}
@@ -272,9 +273,12 @@ function buildJobOpsGeminiRequest_(evidence) {
   return {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
-      temperature: 0,
-      responseMimeType: 'application/json',
-      responseJsonSchema: getJobOpsGeminiJobSchema_(),
+      responseFormat: {
+        text: {
+          mimeType: 'application/json',
+          schema: getJobOpsGeminiJobSchema_(),
+        },
+      },
     },
   };
 }
