@@ -138,7 +138,10 @@ function extractJobOpsGeminiDiagnosticText_(responseText) {
  * @returns {string}
  */
 function sanitizeJobOpsGeminiDiagnosticMessage_(value, apiKey) {
-  let message = String(value || '').replace(/\s+/gu, ' ').trim().slice(0, 500);
+  let message = String(value || '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .slice(0, 500);
   if (apiKey) {
     message = message.split(apiKey).join('[redacted]');
   }
