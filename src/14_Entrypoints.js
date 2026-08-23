@@ -137,68 +137,75 @@ function runJobOpsIngestion_(forceDryRun) {
     const recruiterThreads = [];
     let duplicateCount = 0;
     let recruiterCount = 0;
+    let parsedJobCount = 0;
 
     for (const envelope of inbox.candidates) {
       try {
-        const parsed = parseJobOpsMessage_(envelope.input, sourceDefinitions);
-        const record = buildJobOpsJobRecord_(envelope.input, parsed, config);
-        Object.assign(
-          record,
-          evaluateJobOpsJob_(
-            { ...parsed, isRecruiter: parsed.detection.isRecruiter },
-            evaluationContext,
-          ),
-        );
-        const candidate = {
-          messageId: envelope.input.messageId,
-          jobUrl: parsed.jobUrl,
-          deduplicationKey: record.DEDUPLICATION_KEY,
-          source: parsed.source,
-          sourceJobId: parsed.sourceJobId,
-        };
-        const duplicateMatch = findJobOpsDuplicateMatch_(candidate, deduplicationIndex);
+        const parsedJobs = parseJobOpsMessageBatch_(envelope.input, sourceDefinitions);
+        parsedJobCount += parsedJobs.length;
 
-        if (duplicateMatch) {
-          duplicateCount += 1;
-          if (duplicateMatch.target) {
-            Object.assign(
-              duplicateMatch.target.record,
-              mergeJobOpsDuplicateRecord_(duplicateMatch.target.record, record),
-            );
-            Object.assign(
-              duplicateMatch.target.record,
-              evaluateJobOpsJob_(
-                {
-                  position: duplicateMatch.target.record.POSITION,
-                  descriptionText: parsed.descriptionText,
-                  requiredTechnologies: normalizeJobOpsSingleLineText_(
-                    duplicateMatch.target.record.REQUIRED_TECHNOLOGIES,
-                  )
-                    .split(',')
-                    .map((item) => item.trim())
-                    .filter(Boolean),
-                  isRecruiter:
-                    duplicateMatch.target.record.SOURCE === 'Recruiter' ||
-                    Boolean(duplicateMatch.target.record.RECRUITER_EMAIL),
-                },
-                evaluationContext,
-              ),
-            );
-            registerJobOpsCandidate_(candidate, deduplicationIndex, duplicateMatch.target);
+        for (const parsed of parsedJobs) {
+          const record = buildJobOpsJobRecord_(envelope.input, parsed, config);
+          record.JOB_ID = buildJobOpsBatchJobId_(envelope.input, parsed);
+          Object.assign(
+            record,
+            evaluateJobOpsJob_(
+              { ...parsed, isRecruiter: parsed.detection.isRecruiter },
+              evaluationContext,
+            ),
+          );
 
-            if (duplicateMatch.target.kind === 'existing') {
-              duplicateMatch.target.dirty = true;
-              duplicateUpdateTargets.set(duplicateMatch.target.rowNumber, duplicateMatch.target);
+          const candidate = {
+            messageId: buildJobOpsCandidateMessageIdentity_(envelope.input, parsed),
+            jobUrl: parsed.jobUrl,
+            deduplicationKey: record.DEDUPLICATION_KEY,
+            source: parsed.source,
+            sourceJobId: parsed.sourceJobId,
+          };
+          const duplicateMatch = findJobOpsDuplicateMatch_(candidate, deduplicationIndex);
+
+          if (duplicateMatch) {
+            duplicateCount += 1;
+            if (duplicateMatch.target) {
+              Object.assign(
+                duplicateMatch.target.record,
+                mergeJobOpsDuplicateRecord_(duplicateMatch.target.record, record),
+              );
+              Object.assign(
+                duplicateMatch.target.record,
+                evaluateJobOpsJob_(
+                  {
+                    position: duplicateMatch.target.record.POSITION,
+                    descriptionText: parsed.descriptionText,
+                    requiredTechnologies: normalizeJobOpsSingleLineText_(
+                      duplicateMatch.target.record.REQUIRED_TECHNOLOGIES,
+                    )
+                      .split(',')
+                      .map((item) => item.trim())
+                      .filter(Boolean),
+                    isRecruiter:
+                      duplicateMatch.target.record.SOURCE === 'Recruiter' ||
+                      Boolean(duplicateMatch.target.record.RECRUITER_EMAIL),
+                  },
+                  evaluationContext,
+                ),
+              );
+              registerJobOpsCandidate_(candidate, deduplicationIndex, duplicateMatch.target);
+
+              if (duplicateMatch.target.kind === 'existing') {
+                duplicateMatch.target.dirty = true;
+                duplicateUpdateTargets.set(duplicateMatch.target.rowNumber, duplicateMatch.target);
+              }
             }
+          } else {
+            const target = { kind: 'pending', record };
+            registerJobOpsCandidate_(candidate, deduplicationIndex, target);
+            jobRecords.push(record);
           }
-        } else {
-          const target = { kind: 'pending', record };
-          registerJobOpsCandidate_(candidate, deduplicationIndex, target);
-          jobRecords.push(record);
         }
 
         processedThreads.push(envelope.thread);
-        if (parsed.detection.isRecruiter) {
+        if (parsedJobs.some((parsed) => parsed.detection.isRecruiter)) {
           recruiterCount += 1;
           recruiterThreads.push(envelope.thread);
         }
@@ -255,6 +262,7 @@ function runJobOpsIngestion_(forceDryRun) {
       dryRun,
       scannedMessages: inbox.scannedMessages,
       candidateMessages: inbox.candidates.length,
+      parsedJobs: parsedJobCount,
       ignoredMessages: inbox.ignoredMessages,
       createdJobs: dryRun ? 0 : jobRecords.length,
       wouldCreateJobs: dryRun ? jobRecords.length : 0,
@@ -365,7 +373,7 @@ function runJobOpsRescore_() {
   if (!lock.tryLock(5000)) {
     throw createJobOpsError_(
       JOBOPS_ERROR_CODES.INGESTION_LOCK,
-      'Another JobOps process is already running.',
+      'Another JobOps ingestion is already running.',
     );
   }
 
@@ -457,6 +465,6 @@ function writeJobOpsIngestionBatch_(spreadsheet, duplicateUpdateTargets, jobReco
  */
 function logJobOpsIngestionSummary_(summary) {
   Logger.log(
-    `JobOps Phase 4: dryRun=${summary.dryRun}, scanned=${summary.scannedMessages}, candidates=${summary.candidateMessages}, created=${summary.createdJobs}, wouldCreate=${summary.wouldCreateJobs}, errors=${summary.parsingErrors}, duplicates=${summary.duplicates}`,
+    `JobOps Phase 4: dryRun=${summary.dryRun}, scanned=${summary.scannedMessages}, candidates=${summary.candidateMessages}, parsedJobs=${summary.parsedJobs}, created=${summary.createdJobs}, wouldCreate=${summary.wouldCreateJobs}, errors=${summary.parsingErrors}, duplicates=${summary.duplicates}`,
   );
 }
