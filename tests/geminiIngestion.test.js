@@ -118,10 +118,7 @@ test('Gemini request uses conservative current responseFormat structured output 
   assert.equal(textFormat.schema.type, 'object');
   assert.equal('additionalProperties' in textFormat.schema, false);
   assert.equal('maxItems' in textFormat.schema.properties.jobs, false);
-  assert.equal(
-    'enum' in textFormat.schema.properties.jobs.items.properties.workMode,
-    false,
-  );
+  assert.equal('enum' in textFormat.schema.properties.jobs.items.properties.workMode, false);
   assert.equal('responseMimeType' in request.generationConfig, false);
   assert.equal('responseJsonSchema' in request.generationConfig, false);
   assert.equal('temperature' in request.generationConfig, false);
