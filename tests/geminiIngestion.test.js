@@ -113,7 +113,7 @@ test('Gemini request uses current responseFormat structured output shape', () =>
     jobLinks: [{ ref: 'JOB_LINK_1', sourceJobId: 'aaa111' }],
   });
 
-  assert.equal(request.generationConfig.responseFormat.text.mimeType, 'application/json');
+  assert.equal(request.generationConfig.responseFormat.text.mimeType, 'APPLICATION_JSON');
   assert.equal(request.generationConfig.responseFormat.text.schema.type, 'object');
   assert.equal('responseMimeType' in request.generationConfig, false);
   assert.equal('responseJsonSchema' in request.generationConfig, false);
