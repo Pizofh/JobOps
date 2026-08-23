@@ -105,6 +105,21 @@ test('Gemini validation rejects hallucinated link references or identifiers', ()
   assert.equal(jobs.length, 0);
 });
 
+test('Gemini request uses current responseFormat structured output shape', () => {
+  const context = loadJobOpsContext();
+  const request = context.buildJobOpsGeminiRequest_({
+    subject: 'DevOps roles',
+    body: 'DevOps Engineer\nAcme',
+    jobLinks: [{ ref: 'JOB_LINK_1', sourceJobId: 'aaa111' }],
+  });
+
+  assert.equal(request.generationConfig.responseFormat.text.mimeType, 'application/json');
+  assert.equal(request.generationConfig.responseFormat.text.schema.type, 'object');
+  assert.equal('responseMimeType' in request.generationConfig, false);
+  assert.equal('responseJsonSchema' in request.generationConfig, false);
+  assert.equal('temperature' in request.generationConfig, false);
+});
+
 test('jobs in the same Gmail message receive different batch identities', () => {
   const context = loadJobOpsContext();
   const input = { messageId: 'gmail-message-1' };
