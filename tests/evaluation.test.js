@@ -63,7 +63,7 @@ test('editable role, score and CV settings produce an explainable recommendation
 
   assert.equal(result.ROLE_FAMILY, 'DEVOPS_PLATFORM_SRE');
   assert.equal(result.MATCH_SCORE, 12);
-  assert.equal(result.PRIORITY, 'REVIEW');
+  assert.equal(result.PRIORITY, 'HIGH');
   assert.equal(result.RECOMMENDED_CV, 'DEVOPS_PLATFORM');
   assert.equal(result.CV_LINK, 'https://drive.example/devops');
   assert.match(result.STRONG_MATCHES, /Strategic BRIDGE \+4/);
@@ -73,7 +73,7 @@ test('editable role, score and CV settings produce an explainable recommendation
   assert.match(result.RISK_FLAGS, /SENIOR_TITLE -5/);
 });
 
-test('strategic role level adds a transparent baseline score', () => {
+test('strategic role level adds a transparent baseline score without auto-promoting to HIGH', () => {
   const context = loadJobOpsContext();
   const roles = context.parseJobOpsRoleFamilies_([
     [
@@ -85,7 +85,7 @@ test('strategic role level adds a transparent baseline score', () => {
       'ENABLED',
       'STRATEGIC_LEVEL',
     ],
-    ['DIRECT_ROLE', 'devops engineer', 1, 'CV_TO_CREATE', 0, true, 'DIRECT'],
+    ['DIRECT_ROLE', 'devops engineer', 1, 'CV_TO_CREATE', 8, true, 'DIRECT'],
     ['UNRELATED', '', 99, 'CV_TO_CREATE', 999, true, 'UNRELATED'],
   ]);
   const result = context.evaluateJobOpsJob_(
@@ -104,7 +104,7 @@ test('strategic role level adds a transparent baseline score', () => {
   );
 
   assert.equal(result.MATCH_SCORE, 6);
-  assert.equal(result.PRIORITY, 'OPTIONAL');
+  assert.equal(result.PRIORITY, 'REVIEW');
   assert.match(result.STRONG_MATCHES, /Strategic DIRECT \+6/);
 });
 
