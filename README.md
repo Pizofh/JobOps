@@ -46,6 +46,19 @@ npm run ci
 
 Apps Script representa el código de servidor como archivos de script y su editor suele mostrarlos como `.gs`. `clasp` admite `.js` localmente; `.clasp.json.example` fija `scriptExtensions: [".js"]`. Esto permite ejecutar las mismas fuentes con Node, ESLint y las pruebas sin compilación ni conversión manual.
 
+## Gemini opcional para alertas con varias vacantes
+
+JobOps puede usar Gemini únicamente para convertir un digest de Indeed en varias vacantes independientes. La clasificación, el scoring, la deduplicación y la escritura en Sheets siguen siendo lógica local de JobOps.
+
+La integración es opt-in mediante Script Properties:
+
+- `GEMINI_API_KEY`: habilita la extracción asistida por Gemini para Indeed.
+- `GEMINI_MODEL`: opcional; por defecto `gemini-2.5-flash-lite`.
+
+La API key nunca debe guardarse en Git. Antes de enviar contenido al modelo, JobOps elimina direcciones de correo, pies de administración y URLs personalizadas; los enlaces de vacantes se representan mediante referencias opacas y se reconstruyen localmente después de validar la respuesta.
+
+Para validar la integración, conserva `DRY_RUN = true`, despliega manualmente con `clasp` y ejecuta `dryRunIngestion()`. El resumen de ingestión diferencia `candidateMessages` de `parsedJobs` para mostrar cuántas vacantes produjo realmente el lote.
+
 ## Documentación
 
 - [Plan maestro y PRD](docs/PRD.md)
