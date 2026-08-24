@@ -113,8 +113,14 @@ test('strategy applies work mode, compensation, contract, schedule and exclusion
     ),
     /MORE_THAN_THREE_ONSITE_DAYS/,
   );
-  assert.doesNotMatch(score({ salary: 'COP 5.500.000 mensuales' }).riskFlags.join('\n'), /COP_BELOW_5M/);
-  assert.match(score({ salary: 'COP 4.900.000 mensuales' }).riskFlags.join('\n'), /COP_BELOW_5M/);
+  assert.doesNotMatch(
+    score({ salary: 'COP 5.500.000 mensuales' }).riskFlags.join('\n'),
+    /COP_BELOW_5M/,
+  );
+  assert.match(
+    score({ salary: 'COP 4.900.000 mensuales' }).riskFlags.join('\n'),
+    /COP_BELOW_5M/,
+  );
   assert.doesNotMatch(
     score({ salary: '$4.500.000 - $5.500.000 por mes' }).riskFlags.join('\n'),
     /COP_BELOW_5M/,
@@ -123,7 +129,10 @@ test('strategy applies work mode, compensation, contract, schedule and exclusion
     score({ salary: '$4.000.000 - $4.900.000 por mes' }).riskFlags.join('\n'),
     /COP_BELOW_5M/,
   );
-  assert.doesNotMatch(score({ salary: 'USD 1,500 monthly' }).riskFlags.join('\n'), /COP_BELOW_5M/);
+  assert.doesNotMatch(
+    score({ salary: 'USD 1,500 monthly' }).riskFlags.join('\n'),
+    /COP_BELOW_5M/,
+  );
   assert.doesNotMatch(score({ salary: '' }).riskFlags.join('\n'), /COP_BELOW_5M/);
   assert.match(
     score({ descriptionText: 'This role requires a night shift.' }).riskFlags.join('\n'),
