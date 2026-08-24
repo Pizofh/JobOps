@@ -13,6 +13,7 @@ function runJobOpsSetup_() {
   try {
     spreadsheetSummary = setupJobOpsSpreadsheet_(spreadsheet);
     spreadsheetSummary.migratedEntryLevelRule = migrateJobOpsEntryLevelScoringRule_(spreadsheet);
+    spreadsheetSummary.migratedSalaryFloorRule = migrateJobOpsSalaryFloorRule_(spreadsheet);
   } catch (error) {
     if (error.name === 'JobOpsError' && error.code) {
       throw error;
