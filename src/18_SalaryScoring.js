@@ -1,3 +1,5 @@
+/* global matchesJobOpsScoringRule_ */
+
 const JOBOPS_LEGACY_SALARY_RULE_ID = 'RISK_COP_BELOW_6M';
 const JOBOPS_LEGACY_SALARY_PATTERN =
   '(?:cop\\s*\\$?\\s*(?:[1-5]\\d{6}|[1-5](?:[.,]\\d{3}){2}|[1-5](?:[.,]\\d+)?\\s*(?:m|millones?))|(?:[1-5]\\d{6}|[1-5](?:[.,]\\d{3}){2}|[1-5](?:[.,]\\d+)?\\s*(?:m|millones?))\\s*cop)';
