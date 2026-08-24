@@ -16,10 +16,7 @@ const JOBOPS_MINIMUM_ACCEPTABLE_COP = 5000000;
  * @returns {boolean}
  */
 function shouldApplyJobOpsScoringRule_(rule, job, contextText) {
-  if (
-    rule.ruleId === JOBOPS_LEGACY_SALARY_RULE_ID &&
-    rule.pattern === JOBOPS_SMART_SALARY_PATTERN
-  ) {
+  if (rule.riskFlag === 'COP_BELOW_5M') {
     return isJobOpsCopSalaryBelowMinimum_(job.salary, JOBOPS_MINIMUM_ACCEPTABLE_COP);
   }
 
