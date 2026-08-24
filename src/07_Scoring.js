@@ -1,3 +1,5 @@
+/* global shouldApplyJobOpsScoringRule_ */
+
 /**
  * Converts editable ScoringRules rows to enabled, validated rule objects.
  *
