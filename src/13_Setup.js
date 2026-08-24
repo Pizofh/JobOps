@@ -1,3 +1,5 @@
+/* global migrateJobOpsSalaryFloorRule_ */
+
 /**
  * Creates the editable JobOps environment without replacing existing values.
  *
