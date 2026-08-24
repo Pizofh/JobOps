@@ -139,18 +139,17 @@ function migrateJobOpsSalaryFloorRule_(spreadsheet) {
     return false;
   }
 
-  sheet
-    .getRange(rowIndex + 1, indexes.PATTERN + 1)
-    .setValues([[JOBOPS_SMART_SALARY_PATTERN]]);
-  sheet.getRange(rowIndex + 1, indexes.RISK_FLAG + 1).setValues([['COP_BELOW_5M']]);
+  const patternCell = sheet.getRange(rowIndex + 1, indexes.PATTERN + 1);
+  patternCell.setValues([[JOBOPS_SMART_SALARY_PATTERN]]);
+  const riskFlagCell = sheet.getRange(rowIndex + 1, indexes.RISK_FLAG + 1);
+  riskFlagCell.setValues([['COP_BELOW_5M']]);
   if (notesIndex !== -1) {
-    sheet
-      .getRange(rowIndex + 1, notesIndex + 1)
-      .setValues([
-        [
-          'Compensación COP: penaliza solo si el máximo publicado del rango es inferior a 5M mensuales.',
-        ],
-      ]);
+    const notesCell = sheet.getRange(rowIndex + 1, notesIndex + 1);
+    notesCell.setValues([
+      [
+        'Compensación COP: penaliza solo si el máximo publicado del rango es inferior a 5M mensuales.',
+      ],
+    ]);
   }
   return true;
 }
