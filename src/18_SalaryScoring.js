@@ -126,12 +126,11 @@ function migrateJobOpsSalaryFloorRule_(spreadsheet) {
     return false;
   }
 
-  const currentNotes =
-    notesIndex === -1 ? '' : normalizeJobOpsSingleLineText_(row[notesIndex]);
-  const currentGroup =
-    groupIndex === -1 ? '' : normalizeJobOpsSingleLineText_(row[groupIndex]);
+  const currentNotes = notesIndex === -1 ? '' : normalizeJobOpsSingleLineText_(row[notesIndex]);
+  const currentGroup = groupIndex === -1 ? '' : normalizeJobOpsSingleLineText_(row[groupIndex]);
   const hasStandardMetadata =
-    (!currentNotes || currentNotes === 'Compensación publicada inferior al mínimo absoluto mensual.') &&
+    (!currentNotes ||
+      currentNotes === 'Compensación publicada inferior al mínimo absoluto mensual.') &&
     (!currentGroup || currentGroup === 'COMPENSATION');
   const untouchedLegacyRule =
     (currentPattern === JOBOPS_LEGACY_SALARY_PATTERN || hasStandardMetadata) &&
