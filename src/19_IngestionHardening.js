@@ -1,4 +1,4 @@
-/* global JOBOPS_ERROR_CODES, JOBOPS_PRIORITIES */
+/* global JOBOPS_ERROR_CODES, buildJobOpsSourceJobKey_, normalizeJobOpsDate_ */
 
 /**
  * Late-loaded hardening for administrative platform messages. Keeping this
@@ -39,11 +39,7 @@ function buildJobOpsSponsoredContentKey_(candidate) {
   const source = foldJobOpsText_(candidate.source);
   const sourceJobId = normalizeJobOpsSingleLineText_(candidate.sourceJobId);
   const jobUrl = canonicalizeJobOpsUrl_(candidate.jobUrl);
-  if (
-    source !== 'indeed' ||
-    sourceJobId ||
-    !/\/pagead\/clk\/dl(?:\?|$)/iu.test(jobUrl)
-  ) {
+  if (source !== 'indeed' || sourceJobId || !/\/pagead\/clk\/dl(?:\?|$)/iu.test(jobUrl)) {
     return '';
   }
 
