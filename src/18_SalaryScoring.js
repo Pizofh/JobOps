@@ -109,6 +109,7 @@ function migrateJobOpsSalaryFloorRule_(spreadsheet) {
     'ENABLED',
   ]);
   const notesIndex = getJobOpsOptionalHeaderIndex_(values, 'NOTES');
+  const groupIndex = getJobOpsOptionalHeaderIndex_(values, 'GROUP');
   const rowIndex = values.findIndex(
     (row, index) =>
       index > 0 &&
@@ -125,8 +126,15 @@ function migrateJobOpsSalaryFloorRule_(spreadsheet) {
     return false;
   }
 
+  const currentNotes =
+    notesIndex === -1 ? '' : normalizeJobOpsSingleLineText_(row[notesIndex]);
+  const currentGroup =
+    groupIndex === -1 ? '' : normalizeJobOpsSingleLineText_(row[groupIndex]);
+  const hasStandardMetadata =
+    (!currentNotes || currentNotes === 'Compensación publicada inferior al mínimo absoluto mensual.') &&
+    (!currentGroup || currentGroup === 'COMPENSATION');
   const untouchedLegacyRule =
-    currentPattern === JOBOPS_LEGACY_SALARY_PATTERN &&
+    (currentPattern === JOBOPS_LEGACY_SALARY_PATTERN || hasStandardMetadata) &&
     normalizeJobOpsSingleLineText_(row[indexes.MATCH_TYPE]).toUpperCase() === 'REGEX' &&
     normalizeJobOpsSingleLineText_(row[indexes.CONTEXT]).toUpperCase() === 'ANY' &&
     Number(row[indexes.SCORE]) === -12 &&
