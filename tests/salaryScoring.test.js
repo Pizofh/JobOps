@@ -8,7 +8,10 @@ test('salary floor uses the maximum published COP range value', () => {
   const context = loadJobOpsContext();
 
   assert.equal(context.isJobOpsCopSalaryBelowMinimum_('$4.900.000', 5000000), true);
-  assert.equal(context.isJobOpsCopSalaryBelowMinimum_('COP 4.900.000 mensuales', 5000000), true);
+  assert.equal(
+    context.isJobOpsCopSalaryBelowMinimum_('COP 4.900.000 mensuales', 5000000),
+    true,
+  );
   assert.equal(context.isJobOpsCopSalaryBelowMinimum_('$5.000.000', 5000000), false);
   assert.equal(
     context.isJobOpsCopSalaryBelowMinimum_('$4.500.000 - $5.500.000 por mes', 5000000),
@@ -48,7 +51,12 @@ test('migrated salary floor is applied by the scoring engine', () => {
       isRecruiter: false,
     },
     rules,
-    { RECRUITER_SCORE_BONUS: 5, OPTIONAL_THRESHOLD: 6, REVIEW_THRESHOLD: 10, HIGH_PRIORITY_THRESHOLD: 15 },
+    {
+      RECRUITER_SCORE_BONUS: 5,
+      OPTIONAL_THRESHOLD: 6,
+      REVIEW_THRESHOLD: 10,
+      HIGH_PRIORITY_THRESHOLD: 15,
+    },
   );
   assert.match(result.riskFlags.join('\n'), /COP_BELOW_5M/);
 });
