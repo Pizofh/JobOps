@@ -71,10 +71,7 @@ test('LinkedIn job links are reduced to public per-vacancy URLs', () => {
   assert.equal(links[0].url, 'https://www.linkedin.com/jobs/view/4321098765/');
   assert.equal(links[1].sourceJobId, '9876543210');
   assert.equal(links[1].url, 'https://www.linkedin.com/jobs/view/9876543210/');
-  assert.equal(
-    links.some((link) => link.url.includes('private-token')),
-    false,
-  );
+  assert.equal(links.some((link) => link.url.includes('private-token')), false);
 });
 
 test('Gemini validation keeps separate LinkedIn jobs and normalizes parser metadata', () => {
@@ -126,9 +123,7 @@ test('Gemini validation keeps separate LinkedIn jobs and normalizes parser metad
     },
     evidence,
   );
-  const normalized = jobs.map((job) =>
-    context.normalizeJobOpsAiJob_(job, { source: 'LinkedIn' }),
-  );
+  const normalized = jobs.map((job) => context.normalizeJobOpsAiJob_(job, { source: 'LinkedIn' }));
 
   assert.equal(normalized.length, 2);
   assert.equal(normalized[0].parserName, 'parseLinkedInJob+Gemini');
