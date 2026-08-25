@@ -1,3 +1,5 @@
+/* global shouldApplyJobOpsScoringRule_ */
+
 /**
  * Converts editable ScoringRules rows to enabled, validated rule objects.
  *
@@ -76,7 +78,7 @@ function calculateJobOpsScore_(job, rules, config) {
   let score = 0;
 
   for (const rule of rules) {
-    if (!matchesJobOpsScoringRule_(rule, contextText[rule.context])) {
+    if (!shouldApplyJobOpsScoringRule_(rule, job, contextText)) {
       continue;
     }
 

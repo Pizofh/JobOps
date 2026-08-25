@@ -113,8 +113,10 @@ test('strategy applies work mode, compensation, contract, schedule and exclusion
     ),
     /MORE_THAN_THREE_ONSITE_DAYS/,
   );
-  assert.match(score({ salary: 'COP 5.500.000 mensuales' }).riskFlags.join('\n'), /COP_BELOW_6M/);
-  assert.doesNotMatch(score({ salary: 'USD 1,500 monthly' }).riskFlags.join('\n'), /COP_BELOW_6M/);
+  const lowSalary = score({ salary: 'COP 4.900.000 mensuales' });
+  assert.match(lowSalary.riskFlags.join('\n'), /COP_BELOW_5M/);
+  const foreignSalary = score({ salary: 'USD 1,500 monthly' });
+  assert.doesNotMatch(foreignSalary.riskFlags.join('\n'), /COP_BELOW_5M/);
   assert.match(
     score({ descriptionText: 'This role requires a night shift.' }).riskFlags.join('\n'),
     /NIGHT_SHIFT/,

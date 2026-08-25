@@ -1,3 +1,5 @@
+/* global migrateJobOpsSalaryFloorRule_ */
+
 /**
  * Creates the editable JobOps environment without replacing existing values.
  *
@@ -12,6 +14,8 @@ function runJobOpsSetup_() {
   let spreadsheetSummary;
   try {
     spreadsheetSummary = setupJobOpsSpreadsheet_(spreadsheet);
+    spreadsheetSummary.migratedEntryLevelRule = migrateJobOpsEntryLevelScoringRule_(spreadsheet);
+    spreadsheetSummary.migratedSalaryFloorRule = migrateJobOpsSalaryFloorRule_(spreadsheet);
   } catch (error) {
     if (error.name === 'JobOpsError' && error.code) {
       throw error;

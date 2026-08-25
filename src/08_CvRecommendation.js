@@ -67,6 +67,12 @@ function recommendJobOpsCv_(roleFamily, profiles, preferredProfile) {
 function evaluateJobOpsJob_(job, context) {
   const classification = classifyJobOpsRole_(job, context.roleFamilies);
   const score = calculateJobOpsScore_(job, context.scoringRules, context.config);
+  const strategicBonus = getJobOpsStrategicLevelScoreBonus_(classification.strategicLevel);
+  const totalScore = score.score + strategicBonus;
+  const strongMatches = score.strongMatches.slice();
+  if (strategicBonus > 0) {
+    strongMatches.unshift(`Strategic ${classification.strategicLevel} +${strategicBonus}`);
+  }
   const recommendation = recommendJobOpsCv_(
     classification.roleFamily,
     context.cvProfiles,
@@ -75,11 +81,11 @@ function evaluateJobOpsJob_(job, context) {
 
   return {
     ROLE_FAMILY: classification.roleFamily,
-    MATCH_SCORE: score.score,
-    PRIORITY: getJobOpsPriorityForEvaluation_(score.score, context.config, classification),
+    MATCH_SCORE: totalScore,
+    PRIORITY: getJobOpsPriorityForEvaluation_(totalScore, context.config, classification),
     RECOMMENDED_CV: recommendation.profile,
     CV_LINK: recommendation.driveUrl,
-    STRONG_MATCHES: score.strongMatches.join('\n'),
+    STRONG_MATCHES: strongMatches.join('\n'),
     RISK_FLAGS: score.riskFlags.join('\n'),
   };
 }
