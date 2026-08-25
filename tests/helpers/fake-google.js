@@ -312,6 +312,13 @@ function createFakeGoogleServices(options = {}) {
   const labels = new Map();
   const threads = (options.gmailThreads || []).map((thread) => new FakeGmailThread(thread));
   const logs = [];
+  const scriptProperties = new Map(
+    Object.entries({
+      SPREADSHEET_ID: spreadsheetId,
+      USER_EMAIL: userEmail,
+      ...(options.scriptProperties || {}),
+    }),
+  );
   let lockHeld = false;
 
   return {
@@ -324,7 +331,14 @@ function createFakeGoogleServices(options = {}) {
         getScriptProperties() {
           return {
             getProperties() {
-              return { SPREADSHEET_ID: spreadsheetId, USER_EMAIL: userEmail };
+              return Object.fromEntries(scriptProperties);
+            },
+            getProperty(key) {
+              return scriptProperties.get(key) || null;
+            },
+            setProperty(key, value) {
+              scriptProperties.set(key, String(value));
+              return this;
             },
           };
         },
