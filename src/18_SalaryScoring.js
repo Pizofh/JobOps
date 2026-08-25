@@ -63,7 +63,7 @@ function isJobOpsCopSalaryBelowMinimum_(salary, minimumCop) {
  */
 function extractJobOpsCopSalaryAmounts_(text) {
   const amounts = [];
-  const millionPattern = /(\d+(?:[.,]\d+)?)\s*(?:m|millones?)/giu;
+  const millionPattern = /(\d+(?:[.,]\d+)?)\s*(?:m\b|millones?\b)/giu;
   let match;
 
   while ((match = millionPattern.exec(text)) !== null) {
