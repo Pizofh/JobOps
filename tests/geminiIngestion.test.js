@@ -58,6 +58,81 @@ test('Gemini validation keeps separate Indeed jobs from one digest', () => {
   assert.equal(jobs[1].sourceJobId, 'bbb222');
 });
 
+test('LinkedIn job links are reduced to public per-vacancy URLs', () => {
+  const context = loadJobOpsContext();
+  const links = context.buildJobOpsLinkedInJobLinks_([
+    'https://www.linkedin.com/comm/jobs/view/4321098765?trackingId=private-token&currentJobId=4321098765',
+    'https://www.linkedin.com/jobs/view/9876543210/?trk=job-alert&currentJobId=9876543210',
+    'https://www.linkedin.com/comm/feed/?lipi=private-feed-token',
+  ]);
+
+  assert.equal(links.length, 2);
+  assert.equal(links[0].sourceJobId, '4321098765');
+  assert.equal(links[0].url, 'https://www.linkedin.com/jobs/view/4321098765/');
+  assert.equal(links[1].sourceJobId, '9876543210');
+  assert.equal(links[1].url, 'https://www.linkedin.com/jobs/view/9876543210/');
+  assert.equal(links.some((link) => link.url.includes('private-token')), false);
+});
+
+test('Gemini validation keeps separate LinkedIn jobs and normalizes parser metadata', () => {
+  const context = loadJobOpsContext();
+  const evidence = {
+    source: 'LinkedIn',
+    jobLinks: [
+      {
+        ref: 'JOB_LINK_1',
+        url: 'https://www.linkedin.com/jobs/view/4321098765/',
+        sourceJobId: '4321098765',
+      },
+      {
+        ref: 'JOB_LINK_2',
+        url: 'https://www.linkedin.com/jobs/view/9876543210/',
+        sourceJobId: '9876543210',
+      },
+    ],
+  };
+
+  const jobs = context.validateJobOpsAiJobs_(
+    {
+      jobs: [
+        {
+          position: 'Cloud Platform Engineer',
+          company: 'Acme',
+          location: 'Bogota',
+          salary: '',
+          experienceRequested: '',
+          workMode: 'HYBRID',
+          jobLinkRef: 'JOB_LINK_1',
+          sourceJobId: '4321098765',
+          requiredTechnologies: ['AWS', 'Terraform'],
+          descriptionText: 'AWS and Terraform',
+        },
+        {
+          position: 'Infrastructure Engineer',
+          company: 'Example Corp',
+          location: 'Bogota',
+          salary: '',
+          experienceRequested: '',
+          workMode: 'REMOTE',
+          jobLinkRef: 'JOB_LINK_2',
+          sourceJobId: '9876543210',
+          requiredTechnologies: ['Linux'],
+          descriptionText: 'Linux infrastructure',
+        },
+      ],
+    },
+    evidence,
+  );
+  const normalized = jobs.map((job) =>
+    context.normalizeJobOpsAiJob_(job, { source: 'LinkedIn' }),
+  );
+
+  assert.equal(normalized.length, 2);
+  assert.equal(normalized[0].parserName, 'parseLinkedInJob+Gemini');
+  assert.equal(normalized[0].jobUrl, 'https://www.linkedin.com/jobs/view/4321098765/');
+  assert.equal(normalized[1].workMode, 'REMOTE');
+});
+
 test('Gemini validation rejects hallucinated link references or identifiers', () => {
   const context = loadJobOpsContext();
   const evidence = {
@@ -108,12 +183,14 @@ test('Gemini validation rejects hallucinated link references or identifiers', ()
 test('Gemini request uses conservative current responseFormat structured output shape', () => {
   const context = loadJobOpsContext();
   const request = context.buildJobOpsGeminiRequest_({
+    source: 'LinkedIn',
     subject: 'DevOps roles',
     body: 'DevOps Engineer\nAcme',
     jobLinks: [{ ref: 'JOB_LINK_1', sourceJobId: 'aaa111' }],
   });
 
   const textFormat = request.generationConfig.responseFormat.text;
+  const prompt = request.contents[0].parts[0].text;
   assert.equal(textFormat.mimeType, 'APPLICATION_JSON');
   assert.equal(textFormat.schema.type, 'object');
   assert.equal('additionalProperties' in textFormat.schema, false);
@@ -122,6 +199,7 @@ test('Gemini request uses conservative current responseFormat structured output 
   assert.equal('responseMimeType' in request.generationConfig, false);
   assert.equal('responseJsonSchema' in request.generationConfig, false);
   assert.equal('temperature' in request.generationConfig, false);
+  assert.match(prompt, /LinkedIn job-alert email/);
 });
 
 test('jobs in the same Gmail message receive different batch identities', () => {
