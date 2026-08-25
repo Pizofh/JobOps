@@ -1,10 +1,11 @@
 const JOBOPS_GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const JOBOPS_GEMINI_MAX_INPUT_CHARS = 30000;
+const JOBOPS_GEMINI_MULTI_JOB_SOURCES = Object.freeze(['indeed', 'linkedin']);
 
 /**
  * Parses one candidate email into one or more normalized jobs.
- * Indeed alert digests use Gemini when GEMINI_API_KEY is configured; all other
- * sources keep the deterministic parser path.
+ * Indeed and LinkedIn alert digests use Gemini when GEMINI_API_KEY is
+ * configured; other sources keep the deterministic parser path.
  *
  * @param {Object} input
  * @param {Object[]} sourceDefinitions
@@ -21,8 +22,9 @@ function parseJobOpsMessageBatch_(input, sourceDefinitions) {
     );
   }
 
-  if (foldJobOpsText_(detection.source) === 'indeed' && isJobOpsGeminiConfigured_()) {
-    return extractJobOpsIndeedJobsWithGemini_(input, detection).map((parsed) => ({
+  const source = foldJobOpsText_(detection.source);
+  if (JOBOPS_GEMINI_MULTI_JOB_SOURCES.includes(source) && isJobOpsGeminiConfigured_()) {
+    return extractJobOpsPlatformJobsWithGemini_(input, detection).map((parsed) => ({
       ...parsed,
       detection,
     }));
@@ -74,15 +76,24 @@ function readJobOpsGeminiSettings_() {
 }
 
 /**
- * Uses Gemini structured output to fan one Indeed digest out into separate jobs.
+ * Uses Gemini structured output to fan one supported platform digest out into
+ * separate jobs.
  *
  * @param {Object} input
  * @param {Object} detection
  * @returns {Object[]}
  */
-function extractJobOpsIndeedJobsWithGemini_(input, detection) {
+function extractJobOpsPlatformJobsWithGemini_(input, detection) {
   const settings = readJobOpsGeminiSettings_();
   const evidence = buildJobOpsAiEmailEvidence_(input, detection);
+  const sourceName = normalizeJobOpsSingleLineText_(detection.source) || 'platform';
+  if (evidence.jobLinks.length === 0) {
+    throw createJobOpsError_(
+      JOBOPS_ERROR_CODES.PARSER,
+      `No individual ${sourceName} job links were extracted locally.`,
+    );
+  }
+
   const request = buildJobOpsGeminiRequest_(evidence);
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     settings.model,
@@ -131,7 +142,7 @@ function extractJobOpsIndeedJobsWithGemini_(input, detection) {
   if (validated.length === 0) {
     throw createJobOpsError_(
       JOBOPS_ERROR_CODES.PARSER,
-      'Gemini did not extract any valid Indeed jobs.',
+      `Gemini did not extract any valid ${sourceName} jobs.`,
     );
   }
 
@@ -139,8 +150,31 @@ function extractJobOpsIndeedJobsWithGemini_(input, detection) {
 }
 
 /**
- * Creates privacy-limited evidence for Gemini. Personalized Indeed URLs remain
- * local and are represented to the model only by opaque JOB_LINK_n references.
+ * Backwards-compatible Indeed wrapper used by diagnostics and older callers.
+ *
+ * @param {Object} input
+ * @param {Object} detection
+ * @returns {Object[]}
+ */
+function extractJobOpsIndeedJobsWithGemini_(input, detection) {
+  return extractJobOpsPlatformJobsWithGemini_(input, detection);
+}
+
+/**
+ * LinkedIn wrapper kept explicit for diagnostics and tests.
+ *
+ * @param {Object} input
+ * @param {Object} detection
+ * @returns {Object[]}
+ */
+function extractJobOpsLinkedInJobsWithGemini_(input, detection) {
+  return extractJobOpsPlatformJobsWithGemini_(input, detection);
+}
+
+/**
+ * Creates privacy-limited evidence for Gemini. Personalized platform URLs
+ * remain local and are represented to the model only by opaque JOB_LINK_n
+ * references.
  *
  * @param {Object} input
  * @param {Object} detection
@@ -149,7 +183,9 @@ function extractJobOpsIndeedJobsWithGemini_(input, detection) {
 function buildJobOpsAiEmailEvidence_(input, detection) {
   const effective = detection.effective || getEffectiveJobOpsMessage_(input);
   const urls = extractJobOpsUrls_(`${effective.body}\n${input.htmlBody || ''}`);
-  const jobLinks = buildJobOpsIndeedJobLinks_(urls);
+  const source = foldJobOpsText_(detection.source);
+  const jobLinks =
+    source === 'linkedin' ? buildJobOpsLinkedInJobLinks_(urls) : buildJobOpsIndeedJobLinks_(urls);
   const body = redactJobOpsAiUrls_(stripJobOpsAiNoise_(effective.body), jobLinks).slice(
     0,
     JOBOPS_GEMINI_MAX_INPUT_CHARS,
@@ -197,6 +233,45 @@ function buildJobOpsIndeedJobLinks_(urls) {
 }
 
 /**
+ * Keeps individual LinkedIn job-detail links only. Personalized query strings
+ * remain as a local match URL, while the stored URL is reconstructed from the
+ * public numeric job identifier and contains no tracking tokens.
+ *
+ * @param {string[]} urls
+ * @returns {{ref: string, url: string, matchUrl: string, sourceJobId: string}[]}
+ */
+function buildJobOpsLinkedInJobLinks_(urls) {
+  const links = [];
+  const seen = new Set();
+
+  for (const url of urls) {
+    const canonicalUrl = canonicalizeJobOpsUrl_(url);
+    const host = getJobOpsUrlHost_(canonicalUrl);
+    const sourceJobId = extractJobOpsSourceJobId_(canonicalUrl);
+    const looksLikeJobCard = /\/jobs\/view\/[A-Za-z0-9_-]{4,}/iu.test(canonicalUrl);
+
+    if (
+      !/(?:^|\.)linkedin\.com$/iu.test(host) ||
+      !sourceJobId ||
+      !looksLikeJobCard ||
+      seen.has(sourceJobId)
+    ) {
+      continue;
+    }
+
+    seen.add(sourceJobId);
+    links.push({
+      ref: `JOB_LINK_${links.length + 1}`,
+      url: `https://www.linkedin.com/jobs/view/${encodeURIComponent(sourceJobId)}/`,
+      matchUrl: canonicalUrl,
+      sourceJobId,
+    });
+  }
+
+  return links;
+}
+
+/**
  * Removes common footer and account-management noise before an email is sent to
  * Gemini. Email addresses are removed as well.
  *
@@ -207,6 +282,7 @@ function stripJobOpsAiNoise_(value) {
   return normalizeJobOpsMultilineText_(value)
     .replace(/\n(?:No compartas este email|Do not share this email)[\s\S]*$/iu, '')
     .replace(/\n(?:Administrar esta alerta de empleo|Manage this job alert)[\s\S]*$/iu, '')
+    .replace(/\n(?:Administrar tus alertas de empleo|Manage your job alerts)[\s\S]*$/iu, '')
     .replace(/\n(?:Cancelar suscripci[oó]n|Unsubscribe)[\s\S]*$/iu, '')
     .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu, '[email removed]')
     .trim();
@@ -217,11 +293,15 @@ function stripJobOpsAiNoise_(value) {
  * Personalized tracking/query values therefore never enter the Gemini prompt.
  *
  * @param {*} value
- * @param {{ref: string, url: string, sourceJobId: string}[]} jobLinks
+ * @param {{ref: string, url: string, matchUrl?: string, sourceJobId: string}[]} jobLinks
  * @returns {string}
  */
 function redactJobOpsAiUrls_(value, jobLinks) {
-  const references = new Map(jobLinks.map((link) => [canonicalizeJobOpsUrl_(link.url), link]));
+  const references = new Map();
+  for (const link of jobLinks) {
+    references.set(canonicalizeJobOpsUrl_(link.matchUrl || link.url), link);
+    references.set(canonicalizeJobOpsUrl_(link.url), link);
+  }
 
   return normalizeJobOpsMultilineText_(value).replace(/https?:\/\/[^\s<>"']+/giu, (rawUrl) => {
     const canonicalUrl = canonicalizeJobOpsUrl_(rawUrl);
@@ -255,8 +335,9 @@ function buildJobOpsGeminiRequest_(evidence) {
   const allowedLinks = evidence.jobLinks
     .map((link) => `${link.ref}${link.sourceJobId ? ` sourceJobId=${link.sourceJobId}` : ''}`)
     .join('\n');
+  const sourceName = normalizeJobOpsSingleLineText_(evidence.source) || 'job-platform';
   const prompt = [
-    'Extract every distinct job vacancy explicitly present in this Indeed job-alert email.',
+    `Extract every distinct job vacancy explicitly present in this ${sourceName} job-alert email.`,
     'Do not invent vacancies, companies, technologies, salary, experience, work mode, or link references.',
     'One email can contain many independent job cards. Return one array item per vacancy.',
     'Use an empty string or empty array when a field is absent.',
@@ -414,6 +495,8 @@ function normalizeJobOpsAiJob_(job, detection) {
     ? job.requiredTechnologies.map(cleanJobOpsParsedField_).filter(Boolean)
     : [];
   const normalizedWorkMode = normalizeJobOpsSingleLineText_(job.workMode).toUpperCase();
+  const sourceName = normalizeJobOpsSingleLineText_(detection.source) || 'Platform';
+  const parserSource = sourceName.replace(/[^A-Za-z0-9]/gu, '') || 'Platform';
 
   return {
     source: detection.source,
@@ -429,10 +512,10 @@ function normalizeJobOpsAiJob_(job, detection) {
     descriptionText,
     recruiterName: '',
     recruiterEmail: '',
-    parserName: 'parseIndeedJob+Gemini',
+    parserName: `parse${parserSource}Job+Gemini`,
     parserVersion: JOBOPS_PARSER_VERSION,
     confidence: job.sourceJobId && job.jobUrl ? 0.95 : 0.8,
-    warnings: ['Extracted from a multi-job Indeed alert with Gemini structured output.'],
+    warnings: [`Extracted from a multi-job ${sourceName} alert with Gemini structured output.`],
   };
 }
 
