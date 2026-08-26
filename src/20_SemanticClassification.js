@@ -150,7 +150,7 @@ function extractJobOpsPlatformJobsWithSemanticGemini_(input, detection, roleFami
   return validated.map((job) => {
     const normalized = normalizeJobOpsAiJob_(job, detection);
     const semanticRoleFamily = validateJobOpsSemanticRoleFamily_(job.roleFamily, roleFamilies);
-    return applyJobOpsSemanticRoleEvidence_(normalized, semanticRoleFamily, roleFamilies);
+    return applyJobOpsSemanticRoleEvidence_(normalized, semanticRoleFamily);
   });
 }
 
@@ -230,16 +230,15 @@ function validateJobOpsSemanticRoleFamily_(value, roleFamilies) {
 }
 
 /**
- * Bridges semantic classification into the existing deterministic classifier by
- * appending the selected family's configured examples to classification text.
- * The numeric score still comes exclusively from ScoringRules.
+ * Adds only the locally validated semantic family to the parser result. It does
+ * not inject synthetic role keywords into descriptionText, so ScoringRules keep
+ * evaluating only evidence that was actually present in the alert.
  *
  * @param {Object} job
  * @param {string} semanticRoleFamily
- * @param {Object[]} roleFamilies
  * @returns {Object}
  */
-function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily, roleFamilies) {
+function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily) {
   if (!semanticRoleFamily) {
     return {
       ...job,
@@ -250,21 +249,9 @@ function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily, roleFamilies)
     };
   }
 
-  const definition = roleFamilies.find(
-    (candidate) => normalizeJobOpsSingleLineText_(candidate.roleFamily) === semanticRoleFamily,
-  );
-  const semanticPatterns =
-    definition && Array.isArray(definition.patterns) ? definition.patterns : [];
-  const semanticEvidence = semanticPatterns
-    .map(normalizeJobOpsSingleLineText_)
-    .filter(Boolean)
-    .join(' | ');
-
   return {
     ...job,
     semanticRoleFamily,
-    descriptionText:
-      `${job.descriptionText || ''}\nSemantic role evidence: ${semanticEvidence}`.trim(),
     parserName: job.parserName.replace(/\+Gemini$/u, '+GeminiSemantic'),
     warnings: job.warnings.concat('Role family classified semantically with Gemini.'),
   };
