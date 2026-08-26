@@ -253,7 +253,8 @@ function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily, roleFamilies)
   const definition = roleFamilies.find(
     (candidate) => normalizeJobOpsSingleLineText_(candidate.roleFamily) === semanticRoleFamily,
   );
-  const semanticPatterns = definition && Array.isArray(definition.patterns) ? definition.patterns : [];
+  const semanticPatterns =
+    definition && Array.isArray(definition.patterns) ? definition.patterns : [];
   const semanticEvidence = semanticPatterns
     .map(normalizeJobOpsSingleLineText_)
     .filter(Boolean)
