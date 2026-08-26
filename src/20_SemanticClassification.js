@@ -80,7 +80,11 @@ function resolveJobOpsSemanticRoleFamilies_(roleFamilies) {
  * @param {Object[]} roleFamilies
  * @returns {Object[]}
  */
-function extractJobOpsPlatformJobsWithSemanticGemini_(input, detection, roleFamilies) {
+function extractJobOpsPlatformJobsWithSemanticGemini_(
+  input,
+  detection,
+  roleFamilies,
+) {
   const settings = readJobOpsGeminiSettings_();
   const evidence = {
     ...buildJobOpsAiEmailEvidence_(input, detection),
@@ -149,7 +153,10 @@ function extractJobOpsPlatformJobsWithSemanticGemini_(input, detection, roleFami
 
   return validated.map((job) => {
     const normalized = normalizeJobOpsAiJob_(job, detection);
-    const semanticRoleFamily = validateJobOpsSemanticRoleFamily_(job.roleFamily, roleFamilies);
+    const semanticRoleFamily = validateJobOpsSemanticRoleFamily_(
+      job.roleFamily,
+      roleFamilies,
+    );
     return applyJobOpsSemanticRoleEvidence_(normalized, semanticRoleFamily, roleFamilies);
   });
 }
@@ -182,7 +189,8 @@ function buildJobOpsAiRoleFamilyEvidence_(roleFamilies) {
  */
 function buildJobOpsSemanticGeminiRequest_(evidence) {
   const request = buildJobOpsGeminiRequest_(evidence);
-  const jobSchema = request.generationConfig.responseFormat.text.schema.properties.jobs.items;
+  const jobSchema =
+    request.generationConfig.responseFormat.text.schema.properties.jobs.items;
   jobSchema.properties.roleFamily = { type: 'string' };
   if (!jobSchema.required.includes('roleFamily')) {
     jobSchema.required.push('roleFamily');
@@ -263,7 +271,8 @@ function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily, roleFamilies)
   return {
     ...job,
     semanticRoleFamily,
-    descriptionText: `${job.descriptionText || ''}\nSemantic role evidence: ${semanticEvidence}`.trim(),
+    descriptionText:
+      `${job.descriptionText || ''}\nSemantic role evidence: ${semanticEvidence}`.trim(),
     parserName: job.parserName.replace(/\+Gemini$/u, '+GeminiSemantic'),
     warnings: job.warnings.concat('Role family classified semantically with Gemini.'),
   };
