@@ -80,7 +80,8 @@ test('valid semantic role evidence steers deterministic classification while sco
   const classification = context.classifyJobOpsRole_(job, families);
   assert.equal(classification.roleFamily, 'PLATFORM_SRE_ASSOCIATE');
   assert.equal(job.parserName, 'parseIndeedJob+GeminiSemantic');
-  assert.match(job.descriptionText, /site reliability engineer/);
+  assert.equal(job.descriptionText, '');
+  assert.deepEqual(Array.from(job.requiredTechnologies), []);
 });
 
 test('unknown semantic family is rejected and leaves deterministic fallback intact', () => {
