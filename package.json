@@ -10,7 +10,7 @@
   "scripts": {
     "lint": "eslint src tests scripts",
     "format": "prettier --write .",
-    "format:check": "prettier --write src/20_SemanticClassification.js tests/semanticClassification.test.js && git diff -- src/20_SemanticClassification.js tests/semanticClassification.test.js && exit 1",
+    "format:check": "prettier --check .",
     "test": "node --test",
     "validate:manifest": "node scripts/validate-manifest.js",
     "ci": "npm run lint && npm run format:check && npm run test && npm run validate:manifest",
