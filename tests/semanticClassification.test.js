@@ -25,7 +25,16 @@ function roleFamilies(context) {
       '',
       'DIRECT',
     ],
-    ['LINUX_INFRASTRUCTURE', 'systems engineer,infrastructure engineer', 2, 'DEVOPS_PLATFORM', 9, true, '', 'BRIDGE'],
+    [
+      'LINUX_INFRASTRUCTURE',
+      'systems engineer,infrastructure engineer',
+      2,
+      'DEVOPS_PLATFORM',
+      9,
+      true,
+      '',
+      'BRIDGE',
+    ],
     ['UNRELATED', '', 99, 'CV_TO_CREATE', 999, true, '', 'UNRELATED'],
   ]);
 }
