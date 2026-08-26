@@ -1,14 +1,18 @@
-/* global JOBOPS_ERROR_CODES, JOBOPS_GEMINI_MULTI_JOB_SOURCES */
+/* global JOBOPS_ERROR_CODES, JOBOPS_GEMINI_MULTI_JOB_SOURCES, JOBOPS_STRATEGY_ROLE_FAMILY_ROWS */
 /* global UrlFetchApp, assertValidJobOpsParserInput_, buildJobOpsAiEmailEvidence_ */
 /* global buildJobOpsGeminiRequest_, createJobOpsError_, detectJobOpsSource_ */
 /* global extractJobOpsGeminiResponseText_, foldJobOpsText_, isJobOpsGeminiConfigured_ */
 /* global normalizeJobOpsAiJob_, normalizeJobOpsSingleLineText_, parseJobOpsDetectedSource_ */
-/* global readJobOpsGeminiSettings_, validateJobOpsAiJobs_ */
+/* global parseJobOpsRoleFamilies_, readJobOpsGeminiSettings_, validateJobOpsAiJobs_ */
 
 /**
  * Parses one candidate email and lets the same Gemini extraction request also
- * classify each platform vacancy into one enabled role family. Non-Gemini
- * sources keep the deterministic parser path.
+ * classify each platform vacancy into a target role family. Non-Gemini sources
+ * keep the deterministic parser path.
+ *
+ * The optional roleFamilies argument is used by callers that already loaded the
+ * editable sheet configuration. Existing callers fall back to the current
+ * strategy definitions so this remains backwards compatible.
  *
  * @param {Object} input
  * @param {Object[]} sourceDefinitions
@@ -27,21 +31,44 @@ function parseJobOpsMessageBatch_(input, sourceDefinitions, roleFamilies) {
   }
 
   const source = foldJobOpsText_(detection.source);
-  const semanticFamilies = Array.isArray(roleFamilies) ? roleFamilies : [];
+  const semanticFamilies = resolveJobOpsSemanticRoleFamilies_(roleFamilies);
   if (
     JOBOPS_GEMINI_MULTI_JOB_SOURCES.includes(source) &&
     isJobOpsGeminiConfigured_() &&
     semanticFamilies.length > 0
   ) {
-    return extractJobOpsPlatformJobsWithSemanticGemini_(
-      input,
-      detection,
-      semanticFamilies,
-    ).map((parsed) => ({ ...parsed, detection }));
+    return extractJobOpsPlatformJobsWithSemanticGemini_(input, detection, semanticFamilies).map(
+      (parsed) => ({ ...parsed, detection }),
+    );
   }
 
   const parsed = parseJobOpsDetectedSource_(input, detection);
   return [{ ...parsed, detection }];
+}
+
+/**
+ * Resolves semantic-classification families. The standard strategy definitions
+ * are a compatibility fallback for the existing two-argument ingestion call.
+ *
+ * @param {Object[]=} roleFamilies
+ * @returns {Object[]}
+ */
+function resolveJobOpsSemanticRoleFamilies_(roleFamilies) {
+  if (Array.isArray(roleFamilies) && roleFamilies.length > 0) {
+    return roleFamilies;
+  }
+
+  const headers = [
+    'ROLE_FAMILY',
+    'PATTERNS',
+    'PRIORITY_ORDER',
+    'RECOMMENDED_CV_PROFILE',
+    'MINIMUM_REVIEW_SCORE',
+    'ENABLED',
+    'NOTES',
+    'STRATEGIC_LEVEL',
+  ];
+  return parseJobOpsRoleFamilies_([headers, ...JOBOPS_STRATEGY_ROLE_FAMILY_ROWS]);
 }
 
 /**
@@ -123,22 +150,13 @@ function extractJobOpsPlatformJobsWithSemanticGemini_(input, detection, roleFami
   return validated.map((job) => {
     const normalized = normalizeJobOpsAiJob_(job, detection);
     const semanticRoleFamily = validateJobOpsSemanticRoleFamily_(job.roleFamily, roleFamilies);
-    return {
-      ...normalized,
-      semanticRoleFamily,
-      parserName: normalized.parserName.replace(/\+Gemini$/u, '+GeminiSemantic'),
-      warnings: semanticRoleFamily
-        ? normalized.warnings.concat('Role family classified semantically with Gemini.')
-        : normalized.warnings.concat(
-            'Gemini role-family classification was invalid; deterministic fallback will be used.',
-          ),
-    };
+    return applyJobOpsSemanticRoleEvidence_(normalized, semanticRoleFamily, roleFamilies);
   });
 }
 
 /**
- * Sends only editable role-family definitions, not CV links or personal data.
- * Patterns are examples for meaning, not literal matching requirements.
+ * Sends only role-family definitions, not CV links or personal data. Patterns
+ * are semantic examples rather than literal matching requirements.
  *
  * @param {Object[]} roleFamilies
  * @returns {{roleFamily: string, strategicLevel: string, examples: string[]}[]}
@@ -209,4 +227,43 @@ function validateJobOpsSemanticRoleFamily_(value, roleFamilies) {
     (candidate) => normalizeJobOpsSingleLineText_(candidate.roleFamily) === requested,
   );
   return definition ? normalizeJobOpsSingleLineText_(definition.roleFamily) : '';
+}
+
+/**
+ * Bridges semantic classification into the existing deterministic classifier by
+ * appending the selected family's configured examples to classification text.
+ * The numeric score still comes exclusively from ScoringRules.
+ *
+ * @param {Object} job
+ * @param {string} semanticRoleFamily
+ * @param {Object[]} roleFamilies
+ * @returns {Object}
+ */
+function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily, roleFamilies) {
+  if (!semanticRoleFamily) {
+    return {
+      ...job,
+      semanticRoleFamily: '',
+      warnings: job.warnings.concat(
+        'Gemini role-family classification was invalid; deterministic fallback will be used.',
+      ),
+    };
+  }
+
+  const definition = roleFamilies.find(
+    (candidate) => normalizeJobOpsSingleLineText_(candidate.roleFamily) === semanticRoleFamily,
+  );
+  const semanticPatterns = definition && Array.isArray(definition.patterns) ? definition.patterns : [];
+  const semanticEvidence = semanticPatterns
+    .map(normalizeJobOpsSingleLineText_)
+    .filter(Boolean)
+    .join(' | ');
+
+  return {
+    ...job,
+    semanticRoleFamily,
+    descriptionText: `${job.descriptionText || ''}\nSemantic role evidence: ${semanticEvidence}`.trim(),
+    parserName: job.parserName.replace(/\+Gemini$/u, '+GeminiSemantic'),
+    warnings: job.warnings.concat('Role family classified semantically with Gemini.'),
+  };
 }
