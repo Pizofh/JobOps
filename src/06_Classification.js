@@ -50,13 +50,31 @@ function parseJobOpsRoleFamilies_(values) {
 }
 
 /**
- * Classifies a job using only editable role-family patterns.
+ * Classifies a job using a locally validated semantic role family when present,
+ * otherwise falling back to editable role-family patterns.
  *
  * @param {Object} job
  * @param {Object[]} roleFamilies
  * @returns {{roleFamily: string, matchedPatterns: string[], confidence: number, recommendedCvProfile: string, strategicLevel: string, minimumReviewScore: number}}
  */
 function classifyJobOpsRole_(job, roleFamilies) {
+  const semanticRoleFamily = normalizeJobOpsSingleLineText_(job.semanticRoleFamily);
+  if (semanticRoleFamily) {
+    const semanticDefinition = roleFamilies.find(
+      (definition) => definition.roleFamily === semanticRoleFamily,
+    );
+    if (semanticDefinition) {
+      return {
+        roleFamily: semanticDefinition.roleFamily,
+        matchedPatterns: [`Semantic:${semanticDefinition.roleFamily}`],
+        confidence: 0.9,
+        recommendedCvProfile: semanticDefinition.recommendedCvProfile,
+        strategicLevel: semanticDefinition.strategicLevel,
+        minimumReviewScore: semanticDefinition.minimumReviewScore,
+      };
+    }
+  }
+
   const title = foldJobOpsText_(job.position);
   const text = foldJobOpsText_(
     [job.position, job.descriptionText, ...(job.requiredTechnologies || [])]
