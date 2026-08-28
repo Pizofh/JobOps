@@ -104,3 +104,44 @@ test('unknown semantic family is rejected and leaves deterministic fallback inta
   assert.equal(classification.roleFamily, 'LINUX_INFRASTRUCTURE');
   assert.equal(job.parserName, 'parseIndeedJob+Gemini');
 });
+
+
+test('duplicate semantic reevaluation preserves the semantic family and upgrades parser metadata', () => {
+  const context = loadJobOpsContext();
+  const target = {
+    POSITION: 'SRE / Platform Infrastructure Engineer Intern',
+    REQUIRED_TECHNOLOGIES: '',
+    LOCATION: 'Bogota, Colombia',
+    WORK_MODE: 'UNKNOWN',
+    SALARY: '',
+    EXPERIENCE_REQUESTED: '',
+    SOURCE: 'LinkedIn',
+    RECRUITER_EMAIL: '',
+    PARSER: 'parseLinkedInJob+Gemini',
+    PARSER_VERSION: '1.1.2000',
+  };
+  const parsed = {
+    descriptionText: '',
+    semanticRoleFamily: 'PLATFORM_SRE_ASSOCIATE',
+  };
+  const incoming = {
+    PARSER: 'parseLinkedInJob+GeminiSemantic',
+    PARSER_VERSION: '1.1.2001',
+  };
+
+  context.evaluateJobOpsJob_ = (job) => ({
+    ROLE_FAMILY: job.semanticRoleFamily,
+    MATCH_SCORE: 12,
+    PRIORITY: 'REVIEW',
+    RECOMMENDED_CV: 'DEVOPS_PLATFORM',
+    CV_LINK: '',
+    STRONG_MATCHES: '',
+    RISK_FLAGS: '',
+  });
+
+  context.applyJobOpsDuplicateEvaluation_(target, parsed, incoming, {});
+
+  assert.equal(target.ROLE_FAMILY, 'PLATFORM_SRE_ASSOCIATE');
+  assert.equal(target.PARSER, 'parseLinkedInJob+GeminiSemantic');
+  assert.equal(target.PARSER_VERSION, '1.1.2001');
+});
