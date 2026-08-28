@@ -171,15 +171,24 @@ function runJobOpsIngestion_(forceDryRun) {
                 duplicateMatch.target.record,
                 mergeJobOpsDuplicateRecord_(duplicateMatch.target.record, record),
               );
-              Object.assign(
-                duplicateMatch.target.record,
-                evaluateJobOpsJob_(
-                  buildJobOpsEvaluationInputFromRecord_(duplicateMatch.target.record, {
-                    descriptionText: parsed.descriptionText,
-                  }),
-                  evaluationContext,
-                ),
+              const semanticRoleFamily = normalizeJobOpsSingleLineText_(
+                parsed.semanticRoleFamily,
               );
+              const duplicateEvaluation = evaluateJobOpsJob_(
+                buildJobOpsEvaluationInputFromRecord_(duplicateMatch.target.record, {
+                  descriptionText: parsed.descriptionText,
+                  semanticRoleFamily,
+                }),
+                evaluationContext,
+              );
+              Object.assign(duplicateMatch.target.record, duplicateEvaluation);
+              if (
+                semanticRoleFamily &&
+                duplicateEvaluation.ROLE_FAMILY === semanticRoleFamily
+              ) {
+                duplicateMatch.target.record.PARSER = record.PARSER;
+                duplicateMatch.target.record.PARSER_VERSION = record.PARSER_VERSION;
+              }
               registerJobOpsCandidate_(candidate, deduplicationIndex, duplicateMatch.target);
 
               if (duplicateMatch.target.kind === 'existing') {
