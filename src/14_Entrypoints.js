@@ -315,12 +315,7 @@ function buildJobOpsEvaluationInputFromRecord_(record, overrides) {
  * @param {Object<string, *>} incomingRecord
  * @param {{roleFamilies: Object[], scoringRules: Object[], cvProfiles: Object[], config: Object}} evaluationContext
  */
-function applyJobOpsDuplicateEvaluation_(
-  targetRecord,
-  parsed,
-  incomingRecord,
-  evaluationContext,
-) {
+function applyJobOpsDuplicateEvaluation_(targetRecord, parsed, incomingRecord, evaluationContext) {
   const semanticRoleFamily = normalizeJobOpsSingleLineText_(parsed.semanticRoleFamily);
   const evaluation = evaluateJobOpsJob_(
     buildJobOpsEvaluationInputFromRecord_(targetRecord, {
