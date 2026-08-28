@@ -321,7 +321,9 @@ function applyJobOpsDuplicateEvaluation_(
   incomingRecord,
   evaluationContext,
 ) {
-  const semanticRoleFamily = normalizeJobOpsSingleLineText_(parsed.semanticRoleFamily);
+  const semanticRoleFamily = normalizeJobOpsSingleLineText_(
+    parsed.semanticRoleFamily,
+  );
   const evaluation = evaluateJobOpsJob_(
     buildJobOpsEvaluationInputFromRecord_(targetRecord, {
       descriptionText: parsed.descriptionText,
