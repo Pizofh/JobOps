@@ -117,5 +117,8 @@ test('web URL projection rejects non-http links', () => {
   });
 
   assert.equal(context.normalizeJobOpsWebUrl_('javascript:alert(1)'), '');
-  assert.equal(context.normalizeJobOpsWebUrl_('https://example.com/job'), 'https://example.com/job');
+  assert.equal(
+    context.normalizeJobOpsWebUrl_('https://example.com/job'),
+    'https://example.com/job',
+  );
 });
