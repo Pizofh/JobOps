@@ -1,8 +1,9 @@
 /* global JOBOPS_ERROR_CODES, JOBOPS_GEMINI_MULTI_JOB_SOURCES, JOBOPS_STRATEGY_ROLE_FAMILY_ROWS */
 /* global UrlFetchApp, assertValidJobOpsParserInput_, buildJobOpsAiEmailEvidence_ */
 /* global buildJobOpsGeminiRequest_, createJobOpsError_, detectJobOpsSource_ */
-/* global extractJobOpsGeminiResponseText_, foldJobOpsText_, isJobOpsGeminiConfigured_ */
-/* global normalizeJobOpsAiJob_, normalizeJobOpsSingleLineText_, parseJobOpsDetectedSource_ */
+/* global extractJobOpsGeminiResponseText_, foldJobOpsText_, isJobOpsAiConfigured_ */
+/* global extractJobOpsPlatformJobsWithSemanticAi_, normalizeJobOpsAiJob_ */
+/* global normalizeJobOpsSingleLineText_, parseJobOpsDetectedSource_ */
 /* global parseJobOpsRoleFamilies_, readJobOpsGeminiSettings_, validateJobOpsAiJobs_ */
 
 /**
