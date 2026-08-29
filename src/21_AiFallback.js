@@ -67,10 +67,7 @@ function readJobOpsAiProviderSettings_(providerNames) {
         properties.getProperty(definition.apiKeyProperty),
       );
       let model = normalizeJobOpsSingleLineText_(properties.getProperty(definition.modelProperty));
-      if (
-        definition.name === 'gemini' &&
-        (!model || model === 'gemini-2.5-flash-lite')
-      ) {
+      if (definition.name === 'gemini' && (!model || model === 'gemini-2.5-flash-lite')) {
         model = JOBOPS_GEMINI_DEFAULT_MODEL;
       }
       model = model || definition.defaultModel;
@@ -97,12 +94,7 @@ function readJobOpsAiProviderSettings_(providerNames) {
  * @param {string[]=} providerNames
  * @returns {Object[]}
  */
-function extractJobOpsPlatformJobsWithSemanticAi_(
-  input,
-  detection,
-  roleFamilies,
-  providerNames,
-) {
+function extractJobOpsPlatformJobsWithSemanticAi_(input, detection, roleFamilies, providerNames) {
   const evidence = {
     ...buildJobOpsAiEmailEvidence_(input, detection),
     roleFamilies: buildJobOpsAiRoleFamilyEvidence_(roleFamilies),
@@ -529,10 +521,8 @@ function getJobOpsAiRetryDelayMs_(response, attempt) {
 
   const backoff =
     JOBOPS_AI_BACKOFF_MS[Math.min(Math.max(attempt - 1, 0), JOBOPS_AI_BACKOFF_MS.length - 1)];
-  return Math.min(
-    JOBOPS_AI_MAX_RETRY_AFTER_MS,
-    Math.max(retryAfterMs || 0, backoff || 0),
-  );
+  const delay = Math.max(retryAfterMs || 0, backoff || 0);
+  return Math.min(JOBOPS_AI_MAX_RETRY_AFTER_MS, delay);
 }
 
 /**
@@ -633,8 +623,7 @@ function compactJobOpsAiPrompt_(prompt, maximumCharacters) {
 
   const tailLength = Math.min(6000, Math.floor(maximum / 3));
   const headLength = maximum - tailLength;
-  return `${text.slice(
-    0,
-    headLength,
-  )}\n[...middle omitted for provider token limit...]\n${text.slice(-tailLength)}`;
+  const head = text.slice(0, headLength);
+  const tail = text.slice(-tailLength);
+  return `${head}\n[...middle omitted for provider token limit...]\n${tail}`;
 }
