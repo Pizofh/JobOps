@@ -69,7 +69,6 @@ Las etiquetas de `GmailApp` se aplican por hilo, no por mensaje individual. Un h
 Las mejoras de endurecimiento, fixtures adicionales y revisión de permisos quedan para la Fase 6. JobOps no automatiza aplicaciones laborales.
 Al cambiar una fila a `APPLIED`, JobOps completa solo las fechas vacías de aplicación y seguimiento. Nunca envía una aplicación ni un mensaje de seguimiento.
 
-
 ## Centro de operación web
 
 La Web App funciona como interfaz operativa sobre la misma hoja `Jobs`. No crea una segunda fuente de verdad.
