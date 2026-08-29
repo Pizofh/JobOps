@@ -21,12 +21,11 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Dump formatted files
+      - name: Show formatting diffs
         run: |
           for f in docs/OPERATIONS.md src/22_WebApp.js tests/webApp.test.js; do
-            echo "FILE:$f"
-            npx prettier "$f" | base64 -w0
-            echo
+            npx prettier "$f" > /tmp/formatted
+            diff -u "$f" /tmp/formatted || true
           done
       - name: Validate
         run: npm run ci
