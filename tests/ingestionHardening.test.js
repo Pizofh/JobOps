@@ -55,7 +55,6 @@ test('normal Indeed jobs with source IDs still use the exact source job key', ()
   assert.equal(key, 'SOURCE:indeed|abc123');
 });
 
-
 test('platform administrative application and membership emails are ignored', () => {
   const context = loadJobOpsContext();
 
