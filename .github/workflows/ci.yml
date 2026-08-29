@@ -21,7 +21,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Show AI fallback format diff
-        run: npx prettier src/21_AiFallback.js > /tmp/ai.js && diff -u src/21_AiFallback.js /tmp/ai.js || true
       - name: Validate
         run: npm run ci
