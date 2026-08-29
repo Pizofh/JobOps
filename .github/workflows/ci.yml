@@ -21,5 +21,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Dump formatted AI fallback
+        run: npx prettier src/21_AiFallback.js | base64 -w0
       - name: Validate
         run: npm run ci
