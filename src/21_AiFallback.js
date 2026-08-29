@@ -322,7 +322,7 @@ function buildJobOpsAiHttpRequest_(provider, semanticRequest) {
   const payload = buildJobOpsOpenAiSemanticRequest_(semanticRequest, provider);
   const isGroq = provider.name === 'groq';
   const headers = {
-    Authorization: `***
+    Authorization: `Bearer ${provider.apiKey}`,
   };
   if (provider.name === 'openrouter') {
     headers['X-Title'] = 'JobOps';
