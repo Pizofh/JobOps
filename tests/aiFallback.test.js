@@ -150,6 +150,9 @@ test('OpenAI-compatible request uses strict JSON schema and never embeds provide
   assert.equal(built.options.headers.Authorization, 'Bearer secret-key-value');
   assert.equal(payload.response_format.type, 'json_schema');
   assert.equal(payload.response_format.json_schema.schema.additionalProperties, false);
-  assert.equal(payload.response_format.json_schema.schema.properties.jobs.items.additionalProperties, false);
+  assert.equal(
+    payload.response_format.json_schema.schema.properties.jobs.items.additionalProperties,
+    false,
+  );
   assert.equal(built.options.payload.includes('secret-key-value'), false);
 });
