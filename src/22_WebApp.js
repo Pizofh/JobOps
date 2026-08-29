@@ -39,7 +39,10 @@ function getJobOpsWebDashboard() {
   assertValidJobOpsScriptProperties_(properties);
   const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
   const targets = readJobOpsJobsForRescore_(spreadsheet);
-  return buildJobOpsWebDashboard_(targets.map((target) => target.record), new Date());
+  return buildJobOpsWebDashboard_(
+    targets.map((target) => target.record),
+    new Date(),
+  );
 }
 
 /**
@@ -104,9 +107,7 @@ function updateJobOpsWebJob(input) {
       const followUpIndex = headers.indexOf('FOLLOW_UP_DATE');
       const existingApplied = existingRow[appliedIndex];
       const existingFollowUp = existingRow[followUpIndex];
-      const appliedDate = isJobOpsWebUsableDate_(existingApplied)
-        ? null
-        : new Date();
+      const appliedDate = isJobOpsWebUsableDate_(existingApplied) ? null : new Date();
       const baseDate = appliedDate || new Date(existingApplied);
       const followUpDate = isJobOpsWebUsableDate_(existingFollowUp)
         ? null
