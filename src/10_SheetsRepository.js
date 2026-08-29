@@ -773,9 +773,9 @@ function buildJobOpsParsingErrorRecord_(input, diagnostic, error) {
       error.code || error.name || JOBOPS_ERROR_CODES.PARSER,
     ),
     ERROR_MESSAGE: normalizeJobOpsSingleLineText_(error.message).slice(0, 500),
-    RETRY_COUNT: 0,
+    RETRY_COUNT: Math.max(0, Number(error.details && error.details.retryCount) || 0),
     RESOLVED: false,
-    NOTES: '',
+    NOTES: normalizeJobOpsSingleLineText_(error.details && error.details.providerTrace).slice(0, 500),
   };
 }
 

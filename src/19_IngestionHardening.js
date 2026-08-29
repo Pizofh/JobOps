@@ -1,33 +1,6 @@
 /* global JOBOPS_ERROR_CODES, buildJobOpsSourceJobKey_, normalizeJobOpsDate_ */
 
 /**
- * Late-loaded hardening for administrative platform messages. Keeping this
- * function name intentionally replaces the earlier generic implementation in
- * the shared Apps Script global scope.
- *
- * @param {Object} effective
- * @returns {boolean}
- */
-function isJobOpsAdministrativeMessage_(effective) {
-  const content = foldJobOpsText_(`${effective.subject}\n${effective.body}`);
-  const signals = [
-    'has creado tu alerta de empleo',
-    'te confirmamos que ahora tienes una nueva alerta de empleo',
-    'se ha activado tu alerta para empleos de',
-    'your job alert has been created',
-    'your job alert is now active',
-    'your job alert has been activated',
-    'job alert confirmation',
-    'te has postulado a una oferta de empleo exitosamente',
-    'te postulaste a una oferta de empleo exitosamente',
-    'application submitted successfully',
-    'your application was submitted successfully',
-  ];
-
-  return signals.some((signal) => content.includes(foldJobOpsText_(signal)));
-}
-
-/**
  * Builds a stable content fingerprint only for sponsored Indeed links that do
  * not expose a source job ID. Their tracking URLs change between alerts, so a
  * canonical URL is not a stable vacancy identity.

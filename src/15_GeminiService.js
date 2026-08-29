@@ -3,15 +3,15 @@ const JOBOPS_GEMINI_MAX_INPUT_CHARS = 30000;
 const JOBOPS_GEMINI_MULTI_JOB_SOURCES = Object.freeze(['indeed', 'linkedin']);
 
 /**
- * Parses one candidate email into one or more normalized jobs.
- * Indeed and LinkedIn alert digests use Gemini when GEMINI_API_KEY is
- * configured; other sources keep the deterministic parser path.
+ * Legacy two-argument batch parser retained for diagnostics and backwards
+ * compatibility. The canonical ingestion entrypoint lives in
+ * 20_SemanticClassification.js.
  *
  * @param {Object} input
  * @param {Object[]} sourceDefinitions
  * @returns {Object[]}
  */
-function parseJobOpsMessageBatch_(input, sourceDefinitions) {
+function parseJobOpsMessageBatchLegacy_(input, sourceDefinitions) {
   assertValidJobOpsParserInput_(input);
   const detection = detectJobOpsSource_(input, sourceDefinitions);
 
@@ -443,7 +443,7 @@ function extractJobOpsGeminiResponseText_(payload) {
  */
 function validateJobOpsAiJobs_(result, evidence) {
   if (!result || !Array.isArray(result.jobs)) {
-    throw createJobOpsError_(JOBOPS_ERROR_CODES.PARSER, 'Gemini output is missing jobs[].');
+    throw createJobOpsError_(JOBOPS_ERROR_CODES.AI_OUTPUT, 'AI output is missing jobs[].');
   }
 
   const linksByRef = new Map(evidence.jobLinks.map((link) => [link.ref, link]));

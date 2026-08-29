@@ -34,10 +34,10 @@ function parseJobOpsMessageBatch_(input, sourceDefinitions, roleFamilies) {
   const semanticFamilies = resolveJobOpsSemanticRoleFamilies_(roleFamilies);
   if (
     JOBOPS_GEMINI_MULTI_JOB_SOURCES.includes(source) &&
-    isJobOpsGeminiConfigured_() &&
+    isJobOpsAiConfigured_() &&
     semanticFamilies.length > 0
   ) {
-    return extractJobOpsPlatformJobsWithSemanticGemini_(input, detection, semanticFamilies).map(
+    return extractJobOpsPlatformJobsWithSemanticAi_(input, detection, semanticFamilies).map(
       (parsed) => ({ ...parsed, detection }),
     );
   }
@@ -81,77 +81,7 @@ function resolveJobOpsSemanticRoleFamilies_(roleFamilies) {
  * @returns {Object[]}
  */
 function extractJobOpsPlatformJobsWithSemanticGemini_(input, detection, roleFamilies) {
-  const settings = readJobOpsGeminiSettings_();
-  const evidence = {
-    ...buildJobOpsAiEmailEvidence_(input, detection),
-    roleFamilies: buildJobOpsAiRoleFamilyEvidence_(roleFamilies),
-  };
-  const sourceName = normalizeJobOpsSingleLineText_(detection.source) || 'platform';
-
-  if (evidence.jobLinks.length === 0) {
-    throw createJobOpsError_(
-      JOBOPS_ERROR_CODES.PARSER,
-      `No individual ${sourceName} job links were extracted locally.`,
-    );
-  }
-
-  const request = buildJobOpsSemanticGeminiRequest_(evidence);
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    settings.model,
-  )}:generateContent`;
-
-  let response;
-  try {
-    response = UrlFetchApp.fetch(endpoint, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { 'x-goog-api-key': settings.apiKey },
-      payload: JSON.stringify(request),
-      muteHttpExceptions: true,
-    });
-  } catch (error) {
-    throw createJobOpsError_(
-      JOBOPS_ERROR_CODES.PARSER,
-      `Gemini request failed: ${error && error.message ? error.message : 'Unknown error'}`,
-    );
-  }
-
-  const status = response.getResponseCode();
-  if (status < 200 || status >= 300) {
-    throw createJobOpsError_(JOBOPS_ERROR_CODES.PARSER, `Gemini returned HTTP ${status}.`);
-  }
-
-  let payload;
-  try {
-    payload = JSON.parse(response.getContentText());
-  } catch {
-    throw createJobOpsError_(JOBOPS_ERROR_CODES.PARSER, 'Gemini returned invalid JSON.');
-  }
-
-  const text = extractJobOpsGeminiResponseText_(payload);
-  let result;
-  try {
-    result = JSON.parse(text);
-  } catch {
-    throw createJobOpsError_(
-      JOBOPS_ERROR_CODES.PARSER,
-      'Gemini structured output was invalid JSON.',
-    );
-  }
-
-  const validated = validateJobOpsAiJobs_(result, evidence);
-  if (validated.length === 0) {
-    throw createJobOpsError_(
-      JOBOPS_ERROR_CODES.PARSER,
-      `Gemini did not extract any valid ${sourceName} jobs.`,
-    );
-  }
-
-  return validated.map((job) => {
-    const normalized = normalizeJobOpsAiJob_(job, detection);
-    const semanticRoleFamily = validateJobOpsSemanticRoleFamily_(job.roleFamily, roleFamilies);
-    return applyJobOpsSemanticRoleEvidence_(normalized, semanticRoleFamily);
-  });
+  return extractJobOpsPlatformJobsWithSemanticAi_(input, detection, roleFamilies, ['gemini']);
 }
 
 /**
@@ -238,13 +168,14 @@ function validateJobOpsSemanticRoleFamily_(value, roleFamilies) {
  * @param {string} semanticRoleFamily
  * @returns {Object}
  */
-function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily) {
+function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily, providerName) {
+  const provider = normalizeJobOpsSingleLineText_(providerName) || 'Gemini';
   if (!semanticRoleFamily) {
     return {
       ...job,
       semanticRoleFamily: '',
       warnings: job.warnings.concat(
-        'Gemini role-family classification was invalid; deterministic fallback will be used.',
+        `${provider} role-family classification was invalid; deterministic fallback will be used.`,
       ),
     };
   }
@@ -252,7 +183,7 @@ function applyJobOpsSemanticRoleEvidence_(job, semanticRoleFamily) {
   return {
     ...job,
     semanticRoleFamily,
-    parserName: job.parserName.replace(/\+Gemini$/u, '+GeminiSemantic'),
-    warnings: job.warnings.concat('Role family classified semantically with Gemini.'),
+    parserName: job.parserName.endsWith('Semantic') ? job.parserName : `${job.parserName}Semantic`,
+    warnings: job.warnings.concat(`Role family classified semantically with ${provider}.`),
   };
 }

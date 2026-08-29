@@ -141,7 +141,11 @@ function runJobOpsIngestion_(forceDryRun) {
 
     for (const envelope of inbox.candidates) {
       try {
-        const parsedJobs = parseJobOpsMessageBatch_(envelope.input, sourceDefinitions);
+        const parsedJobs = parseJobOpsMessageBatch_(
+          envelope.input,
+          sourceDefinitions,
+          evaluationContext.roleFamilies,
+        );
         parsedJobCount += parsedJobs.length;
 
         for (const parsed of parsedJobs) {
