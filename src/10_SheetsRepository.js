@@ -775,9 +775,10 @@ function buildJobOpsParsingErrorRecord_(input, diagnostic, error) {
     ERROR_MESSAGE: normalizeJobOpsSingleLineText_(error.message).slice(0, 500),
     RETRY_COUNT: Math.max(0, Number(error.details && error.details.retryCount) || 0),
     RESOLVED: false,
-    NOTES: normalizeJobOpsSingleLineText_(
-      error.details && error.details.providerTrace,
-    ).slice(0, 500),
+    NOTES: normalizeJobOpsSingleLineText_(error.details && error.details.providerTrace).slice(
+      0,
+      500,
+    ),
   };
 }
 
