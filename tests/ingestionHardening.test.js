@@ -54,3 +54,49 @@ test('normal Indeed jobs with source IDs still use the exact source job key', ()
 
   assert.equal(key, 'SOURCE:indeed|abc123');
 });
+
+
+test('platform administrative application and membership emails are ignored', () => {
+  const context = loadJobOpsContext();
+
+  assert.equal(
+    context.isJobOpsAdministrativeMessage_({
+      subject: 'An update on your application from SD Solutions',
+      body: 'There is an update on your application.',
+    }),
+    true,
+  );
+  assert.equal(
+    context.isJobOpsAdministrativeMessage_({
+      subject: 'Brian Steve, gracias por ser miembro de LinkedIn',
+      body: 'Gracias por ser miembro de LinkedIn Premium.',
+    }),
+    true,
+  );
+  assert.equal(
+    context.isJobOpsAdministrativeMessage_({
+      subject: 'Stand out by sending a quick message to SD Solutions',
+      body: 'Send a quick message after applying.',
+    }),
+    true,
+  );
+});
+
+test('LinkedIn InMail relay with a technical opportunity is recognized as recruiter mail', () => {
+  const context = loadJobOpsContext();
+
+  assert.equal(
+    context.isJobOpsLinkedInRecruiterRelay_('inmail-hit-reply@linkedin.com', {
+      subject: 'Site Reliability Engineer job opportunity at Amadeus',
+      body: 'We have a Site Reliability Engineer opportunity for you.',
+    }),
+    true,
+  );
+  assert.equal(
+    context.isJobOpsLinkedInRecruiterRelay_('jobs-noreply@linkedin.com', {
+      subject: 'Site Reliability Engineer job opportunity at Amadeus',
+      body: 'We have a Site Reliability Engineer opportunity for you.',
+    }),
+    false,
+  );
+});
