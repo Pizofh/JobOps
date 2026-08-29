@@ -1,4 +1,5 @@
-/* global JOBOPS_ERROR_CODES, JOBOPS_GEMINI_DEFAULT_MODEL, PropertiesService, UrlFetchApp, Utilities */
+/* global JOBOPS_ERROR_CODES, JOBOPS_GEMINI_DEFAULT_MODEL, PropertiesService */
+/* global UrlFetchApp, Utilities */
 /* global applyJobOpsSemanticRoleEvidence_, buildJobOpsAiEmailEvidence_ */
 /* global buildJobOpsAiRoleFamilyEvidence_, buildJobOpsSemanticGeminiRequest_ */
 /* global createJobOpsError_, extractJobOpsGeminiResponseText_, foldJobOpsText_ */
@@ -151,9 +152,14 @@ function extractJobOpsPlatformJobsWithSemanticAi_(
   );
 
   return execution.value.map((job) => {
-    let normalized = tagJobOpsAiProvider_(normalizeJobOpsAiJob_(job, detection), execution.provider);
+    let normalized = tagJobOpsAiProvider_(
+      normalizeJobOpsAiJob_(job, detection),
+      execution.provider,
+    );
     if (execution.failures.length > 0) {
-      const previousProviders = execution.failures.map((failure) => failure.displayName).join(' -> ');
+      const previousProviders = execution.failures
+        .map((failure) => failure.displayName)
+        .join(' -> ');
       normalized = {
         ...normalized,
         warnings: normalized.warnings.concat(
@@ -237,12 +243,7 @@ function executeJobOpsAiProviderChain_(providers, semanticRequest, onSuccess, fe
  * @param {Function=} sleeper
  * @returns {{ok: boolean, status: number, attempts: number, retryCount: number, responseText: string, detail: string}}
  */
-function requestJobOpsAiProviderWithRetry_(
-  provider,
-  semanticRequest,
-  fetcher,
-  sleeper,
-) {
+function requestJobOpsAiProviderWithRetry_(provider, semanticRequest, fetcher, sleeper) {
   const request = buildJobOpsAiHttpRequest_(provider, semanticRequest);
   const fetchFunction =
     fetcher ||
@@ -632,7 +633,8 @@ function compactJobOpsAiPrompt_(prompt, maximumCharacters) {
 
   const tailLength = Math.min(6000, Math.floor(maximum / 3));
   const headLength = maximum - tailLength;
-  return `${text.slice(0, headLength)}\n[...middle omitted for provider token limit...]\n${text.slice(
-    -tailLength,
-  )}`;
+  return `${text.slice(
+    0,
+    headLength,
+  )}\n[...middle omitted for provider token limit...]\n${text.slice(-tailLength)}`;
 }
