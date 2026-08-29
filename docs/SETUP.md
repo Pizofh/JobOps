@@ -39,14 +39,12 @@ En **Project Settings → Script Properties** agrega:
 
 Configura una o varias; el orden de fallback es Gemini → Groq → OpenRouter.
 
-| Key | Uso |
-| --- | --- |
-| `GEMINI_API_KEY` | Proveedor principal cuando está configurado. |
-| `GEMINI_MODEL` | Modelo Gemini opcional. |
-| `GROQ_API_KEY` | Primer fallback. |
-| `GROQ_MODEL` | Opcional; default `openai/gpt-oss-20b`. |
-| `OPENROUTER_API_KEY` | Segundo fallback. |
-| `OPENROUTER_MODEL` | Opcional; default `openrouter/free`. |
+- `GEMINI_API_KEY`: proveedor principal cuando está configurado.
+- `GEMINI_MODEL`: modelo Gemini opcional.
+- `GROQ_API_KEY`: primer fallback.
+- `GROQ_MODEL`: opcional; default `openai/gpt-oss-20b`.
+- `OPENROUTER_API_KEY`: segundo fallback.
+- `OPENROUTER_MODEL`: opcional; default `openrouter/free`.
 
 Nunca confirmes `.clasp.json`, credenciales, IDs privados, correos reales, CV ni fixtures sin anonimizar.
 
