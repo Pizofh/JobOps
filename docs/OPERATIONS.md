@@ -68,3 +68,23 @@ Las etiquetas de `GmailApp` se aplican por hilo, no por mensaje individual. Un h
 
 Las mejoras de endurecimiento, fixtures adicionales y revisión de permisos quedan para la Fase 6. JobOps no automatiza aplicaciones laborales.
 Al cambiar una fila a `APPLIED`, JobOps completa solo las fechas vacías de aplicación y seguimiento. Nunca envía una aplicación ni un mensaje de seguimiento.
+
+
+## Centro de operación web
+
+La Web App funciona como interfaz operativa sobre la misma hoja `Jobs`. No crea una segunda fuente de verdad.
+
+- Solo expone prioridades `HIGH`, `REVIEW` y `OPTIONAL`; `LOW` queda fuera del payload del navegador.
+- Muestra vistas de revisión, aplicaciones activas, todas las oportunidades visibles y archivadas.
+- Permite abrir la vacante y el enlace del CV recomendado.
+- Permite actualizar `STATUS` y `NOTES`. Al pasar a `APPLIED`, completa únicamente fechas vacías de aplicación y seguimiento.
+- El botón **Procesar alertas** ejecuta la misma ingestión protegida por lock e idempotencia.
+- No automatiza ninguna postulación.
+
+### Despliegue
+
+1. Ejecuta `npm run push`.
+2. En Apps Script: **Deploy → New deployment → Web app**.
+3. Ejecuta como el propietario del script.
+4. Restringe el acceso al propio usuario/cuenta.
+5. Abre la URL del deployment y valida que no aparezcan oportunidades `LOW`.
