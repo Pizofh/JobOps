@@ -154,9 +154,7 @@ function extractJobOpsPlatformJobsWithSemanticAi_(input, detection, roleFamilies
         .join(' -> ');
       normalized = {
         ...normalized,
-        warnings: normalized.warnings.concat(
-          `AI fallback used after ${previousProviders} failed.`,
-        ),
+        warnings: normalized.warnings.concat(`AI fallback used after ${previousProviders} failed.`),
       };
     }
     const semanticRoleFamily = validateJobOpsSemanticRoleFamily_(job.roleFamily, roleFamilies);
@@ -184,12 +182,7 @@ function executeJobOpsAiProviderChain_(providers, semanticRequest, onSuccess, fe
   let retryCount = 0;
 
   for (const provider of providers) {
-    const result = requestJobOpsAiProviderWithRetry_(
-      provider,
-      semanticRequest,
-      fetcher,
-      sleeper,
-    );
+    const result = requestJobOpsAiProviderWithRetry_(provider, semanticRequest, fetcher, sleeper);
     retryCount += result.retryCount;
 
     if (!result.ok) {
@@ -329,7 +322,7 @@ function buildJobOpsAiHttpRequest_(provider, semanticRequest) {
   const payload = buildJobOpsOpenAiSemanticRequest_(semanticRequest, provider);
   const isGroq = provider.name === 'groq';
   const headers = {
-    Authorization: `Bearer ${provider.apiKey}`,
+    Authorization: `***
   };
   if (provider.name === 'openrouter') {
     headers['X-Title'] = 'JobOps';
@@ -596,14 +589,10 @@ function buildJobOpsAiAggregateError_(failures, retryCount) {
     .join(' -> ')
     .slice(0, 500);
 
-  return createJobOpsError_(
-    code,
-    `All configured AI providers failed. ${providerTrace}`,
-    {
-      retryCount: Math.max(0, Number(retryCount) || 0),
-      providerTrace,
-    },
-  );
+  return createJobOpsError_(code, `All configured AI providers failed. ${providerTrace}`, {
+    retryCount: Math.max(0, Number(retryCount) || 0),
+    providerTrace,
+  });
 }
 
 /**
