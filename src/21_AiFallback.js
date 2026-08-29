@@ -1,3 +1,10 @@
+/* global JOBOPS_ERROR_CODES, JOBOPS_GEMINI_DEFAULT_MODEL, PropertiesService, UrlFetchApp, Utilities */
+/* global applyJobOpsSemanticRoleEvidence_, buildJobOpsAiEmailEvidence_ */
+/* global buildJobOpsAiRoleFamilyEvidence_, buildJobOpsSemanticGeminiRequest_ */
+/* global createJobOpsError_, extractJobOpsGeminiResponseText_, foldJobOpsText_ */
+/* global normalizeJobOpsAiJob_, normalizeJobOpsMultilineText_, normalizeJobOpsSingleLineText_ */
+/* global validateJobOpsAiJobs_, validateJobOpsSemanticRoleFamily_ */
+
 const JOBOPS_GROQ_DEFAULT_MODEL = 'openai/gpt-oss-20b';
 const JOBOPS_OPENROUTER_DEFAULT_MODEL = 'openrouter/free';
 const JOBOPS_AI_RETRYABLE_STATUSES = Object.freeze([0, 429, 500, 502, 503, 504]);
