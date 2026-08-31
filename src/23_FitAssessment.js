@@ -192,10 +192,12 @@ function applyJobOpsFitToEvaluation_(
   const matchScore = Number(evaluation.MATCH_SCORE) || 0;
   const finalScore = matchScore + fit.adjustment;
 
+  const calculatedPriority = getJobOpsPriorityForEvaluation_(finalScore, config, classification);
+
   return {
     ...evaluation,
     FINAL_SCORE: finalScore,
-    PRIORITY: getJobOpsPriorityForEvaluation_(finalScore, config, classification),
+    PRIORITY: capJobOpsPriorityByFit_(calculatedPriority, fit.level),
     FIT_LEVEL: fit.level,
     FIT_ADJUSTMENT: fit.adjustment,
     FIT_REASONS: fit.reasons.join('\n'),
@@ -250,15 +252,39 @@ function applyJobOpsStoredFit_(evaluation, storedFit, config, classification) {
   const finalScore = matchScore + adjustment;
   const level = normalizeJobOpsSingleLineText_(storedFit.level).toUpperCase();
 
+  const normalizedLevel = JOBOPS_FIT_LEVELS.includes(level) ? level : 'UNKNOWN';
+  const calculatedPriority = getJobOpsPriorityForEvaluation_(finalScore, config, classification);
+
   return {
     ...evaluation,
     FINAL_SCORE: finalScore,
-    PRIORITY: getJobOpsPriorityForEvaluation_(finalScore, config, classification),
-    FIT_LEVEL: JOBOPS_FIT_LEVELS.includes(level) ? level : 'UNKNOWN',
+    PRIORITY: capJobOpsPriorityByFit_(calculatedPriority, normalizedLevel),
+    FIT_LEVEL: normalizedLevel,
     FIT_ADJUSTMENT: adjustment,
     FIT_REASONS: normalizeJobOpsMultilineText_(storedFit.reasons),
     FIT_PROVIDER: normalizeJobOpsSingleLineText_(storedFit.provider),
     FIT_VERSION: normalizeJobOpsSingleLineText_(storedFit.version),
     FIT_ASSESSED_AT: storedFit.assessedAt || '',
   };
+}
+
+
+/**
+ * Prevents a strategically direct title from staying HIGH when explicit
+ * requirements show a poor practical fit.
+ *
+ * @param {string} priority
+ * @param {string} fitLevel
+ * @returns {string}
+ */
+function capJobOpsPriorityByFit_(priority, fitLevel) {
+  const ranks = { LOW: 0, OPTIONAL: 1, REVIEW: 2, HIGH: 3 };
+  const normalized = normalizeJobOpsSingleLineText_(priority).toUpperCase();
+  const level = normalizeJobOpsSingleLineText_(fitLevel).toUpperCase();
+  const maximum = level === 'POOR' ? 'OPTIONAL' : level === 'STRETCH' ? 'REVIEW' : 'HIGH';
+
+  if (!(normalized in ranks)) {
+    return 'LOW';
+  }
+  return ranks[normalized] > ranks[maximum] ? maximum : normalized;
 }
