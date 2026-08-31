@@ -667,6 +667,15 @@ function updateJobOpsJobEvaluationFields_(spreadsheet, targets) {
     ['ROLE_FAMILY', 'MATCH_SCORE', 'PRIORITY'],
     ['RECOMMENDED_CV', 'CV_LINK'],
     ['STRONG_MATCHES', 'RISK_FLAGS'],
+    [
+      'FIT_LEVEL',
+      'FIT_ADJUSTMENT',
+      'FINAL_SCORE',
+      'FIT_REASONS',
+      'FIT_PROVIDER',
+      'FIT_VERSION',
+      'FIT_ASSESSED_AT',
+    ],
   ];
 
   for (const fields of fieldGroups) {
