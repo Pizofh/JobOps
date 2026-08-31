@@ -341,6 +341,11 @@ function buildJobOpsGeminiRequest_(evidence) {
     'Do not invent vacancies, companies, technologies, salary, experience, work mode, or link references.',
     'One email can contain many independent job cards. Return one array item per vacancy.',
     'Use an empty string or empty array when a field is absent.',
+    'For fit evidence, extract facts only. Do not judge the candidate or invent missing requirements.',
+    'seniorityLevel must be ENTRY, JUNIOR, ASSOCIATE, MID, SENIOR, LEAD, STAFF, PRINCIPAL, MANAGER, DIRECTOR, or UNKNOWN.',
+    'minimumYearsOverall must be the explicit general minimum years requested, or 0 when absent.',
+    'experienceRequirements must contain explicit technology/domain years such as "Terraform: 5 years" only when stated.',
+    'hardRequirements must contain explicit must-have requirements only.',
     'jobLinkRef must be one of the allowed JOB_LINK_n references associated with that vacancy.',
     'sourceJobId must match the identifier shown beside that JOB_LINK_n when one is present.',
     '',
@@ -391,6 +396,10 @@ function getJobOpsGeminiJobSchema_() {
             sourceJobId: { type: 'string' },
             requiredTechnologies: { type: 'array', items: { type: 'string' } },
             descriptionText: { type: 'string' },
+            seniorityLevel: { type: 'string' },
+            minimumYearsOverall: { type: 'number' },
+            experienceRequirements: { type: 'array', items: { type: 'string' } },
+            hardRequirements: { type: 'array', items: { type: 'string' } },
           },
           required: [
             'position',
@@ -403,6 +412,10 @@ function getJobOpsGeminiJobSchema_() {
             'sourceJobId',
             'requiredTechnologies',
             'descriptionText',
+            'seniorityLevel',
+            'minimumYearsOverall',
+            'experienceRequirements',
+            'hardRequirements',
           ],
         },
       },
@@ -510,6 +523,16 @@ function normalizeJobOpsAiJob_(job, detection) {
     experienceRequested: cleanJobOpsParsedField_(job.experienceRequested),
     requiredTechnologies: Array.from(new Set(technologies)).slice(0, 30),
     descriptionText,
+    fitEvidence: {
+      seniorityLevel: cleanJobOpsParsedField_(job.seniorityLevel) || 'UNKNOWN',
+      minimumYearsOverall: Number(job.minimumYearsOverall) || 0,
+      experienceRequirements: Array.isArray(job.experienceRequirements)
+        ? job.experienceRequirements.map(cleanJobOpsParsedField_).filter(Boolean).slice(0, 12)
+        : [],
+      hardRequirements: Array.isArray(job.hardRequirements)
+        ? job.hardRequirements.map(cleanJobOpsParsedField_).filter(Boolean).slice(0, 12)
+        : [],
+    },
     recruiterName: '',
     recruiterEmail: '',
     parserName: `parse${parserSource}Job+Gemini`,
