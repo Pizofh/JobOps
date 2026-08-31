@@ -392,6 +392,7 @@ function formatJobOpsSheet_(sheet, headers) {
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'TIMESTAMP', 'yyyy-mm-dd hh:mm');
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'APPLIED_DATE', 'yyyy-mm-dd');
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'FOLLOW_UP_DATE', 'yyyy-mm-dd');
+  setJobOpsColumnFormatIfPresent_(sheet, headers, 'FIT_ASSESSED_AT', 'yyyy-mm-dd hh:mm');
 }
 
 /**
