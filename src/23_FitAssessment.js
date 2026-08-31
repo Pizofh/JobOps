@@ -228,3 +228,37 @@ function applyJobOpsUnknownFit_(evaluation, config, classification) {
     FIT_ASSESSED_AT: '',
   };
 }
+
+
+/**
+ * Reuses a previously assessed adjustment when base scoring is recalculated.
+ * This avoids another AI call and preserves migration results.
+ *
+ * @param {Object<string, *>} evaluation
+ * @param {Object} storedFit
+ * @param {Object} config
+ * @param {{strategicLevel: string, minimumReviewScore: number}} classification
+ * @returns {Object<string, *>}
+ */
+function applyJobOpsStoredFit_(evaluation, storedFit, config, classification) {
+  const adjustment = Number(storedFit && storedFit.adjustment);
+  if (!Number.isFinite(adjustment) || !normalizeJobOpsSingleLineText_(storedFit.version)) {
+    return applyJobOpsUnknownFit_(evaluation, config, classification);
+  }
+
+  const matchScore = Number(evaluation.MATCH_SCORE) || 0;
+  const finalScore = matchScore + adjustment;
+  const level = normalizeJobOpsSingleLineText_(storedFit.level).toUpperCase();
+
+  return {
+    ...evaluation,
+    FINAL_SCORE: finalScore,
+    PRIORITY: getJobOpsPriorityForEvaluation_(finalScore, config, classification),
+    FIT_LEVEL: JOBOPS_FIT_LEVELS.includes(level) ? level : 'UNKNOWN',
+    FIT_ADJUSTMENT: adjustment,
+    FIT_REASONS: normalizeJobOpsMultilineText_(storedFit.reasons),
+    FIT_PROVIDER: normalizeJobOpsSingleLineText_(storedFit.provider),
+    FIT_VERSION: normalizeJobOpsSingleLineText_(storedFit.version),
+    FIT_ASSESSED_AT: storedFit.assessedAt || '',
+  };
+}
