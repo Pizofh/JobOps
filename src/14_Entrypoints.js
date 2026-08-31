@@ -1,3 +1,4 @@
+/* global ensureJobOpsFitSchema_, runJobOpsFitMigration_ */
 /* exported setupJobOps, installJobOpsTriggers, ingestJobs, sendDailyDigest, handleStatusEdit, rescoreJobs, assessJobFits, dryRunIngestion, validateJobOpsConfiguration */
 
 /**
