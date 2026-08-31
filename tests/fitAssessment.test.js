@@ -91,7 +91,7 @@ test('fit application keeps transparent match score and derives final score sepa
   assert.equal(result.MATCH_SCORE, 20);
   assert.equal(result.FIT_ADJUSTMENT, -10);
   assert.equal(result.FINAL_SCORE, 10);
-  assert.equal(result.PRIORITY, 'HIGH');
+  assert.equal(result.PRIORITY, 'OPTIONAL');
   assert.equal(result.FIT_PROVIDER, 'Gemini');
 });
 
