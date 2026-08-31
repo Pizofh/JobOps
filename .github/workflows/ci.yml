@@ -21,11 +21,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Show fit formatting diffs
-        run: |
-          for f in src/23_FitAssessment.js src/24_FitMigration.js; do
-            npx prettier "$f" > /tmp/formatted
-            diff -u "$f" /tmp/formatted || true
-          done
       - name: Validate
         run: npm run ci
