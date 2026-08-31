@@ -88,7 +88,6 @@ La Web App funciona como interfaz operativa sobre la misma hoja `Jobs`. No crea 
 4. Restringe el acceso al propio usuario/cuenta.
 5. Abre la URL del deployment y valida que no aparezcan oportunidades `LOW`.
 
-
 ## AI Fit Assessment
 
 El scoring conserva dos capas separadas:
