@@ -87,3 +87,17 @@ La Web App funciona como interfaz operativa sobre la misma hoja `Jobs`. No crea 
 3. Ejecuta como el propietario del script.
 4. Restringe el acceso al propio usuario/cuenta.
 5. Abre la URL del deployment y valida que no aparezcan oportunidades `LOW`.
+
+
+## AI Fit Assessment
+
+El scoring conserva dos capas separadas:
+
+- `MATCH_SCORE`: afinidad técnica/estratégica explicable mediante reglas.
+- `FIT_ADJUSTMENT`: ajuste determinístico basado en requisitos explícitos que la IA extrae del correo, como seniority y años mínimos de experiencia.
+- `FINAL_SCORE`: `MATCH_SCORE + FIT_ADJUSTMENT`.
+- `PRIORITY`: usa el score final y además limita a `REVIEW` un fit `STRETCH` y a `OPTIONAL` un fit `POOR`.
+
+La IA no asigna puntos ni decide la prioridad. Solo extrae evidencia estructurada. Si el correo no contiene los requisitos completos de la vacante, JobOps no los inventa y el fit puede quedar `UNKNOWN`.
+
+El botón **Mejorar scoring** del centro de operación migra las vacantes históricas sin borrarlas. Relee el correo original por `GMAIL_MESSAGE_ID`, agrupa las filas que venían del mismo digest para ahorrar llamadas de IA y actualiza únicamente campos del sistema. No modifica estados, notas ni fechas manuales, y no cambia etiquetas de Gmail.
