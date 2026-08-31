@@ -1,4 +1,4 @@
-/* exported setupJobOps, installJobOpsTriggers, ingestJobs, sendDailyDigest, handleStatusEdit, rescoreJobs, dryRunIngestion, validateJobOpsConfiguration */
+/* exported setupJobOps, installJobOpsTriggers, ingestJobs, sendDailyDigest, handleStatusEdit, rescoreJobs, assessJobFits, dryRunIngestion, validateJobOpsConfiguration */
 
 /**
  * Initializes the Phase 1 Sheets environment and Gmail labels.
@@ -77,6 +77,15 @@ function rescoreJobs() {
 }
 
 /**
+ * Re-assesses existing visible jobs in-place using their original Gmail alerts.
+ *
+ * @returns {Object}
+ */
+function assessJobFits() {
+  return runJobOpsFitMigration_();
+}
+
+/**
  * Executes the complete ingestion path without mutating Gmail or Sheets.
  *
  * @returns {Object}
@@ -113,6 +122,7 @@ function runJobOpsIngestion_(forceDryRun) {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    ensureJobOpsFitSchema_(spreadsheet);
     const schemaErrors = getJobOpsSheetSchemaErrors_(spreadsheet);
     if (schemaErrors.length > 0) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, schemaErrors.join(' '));
