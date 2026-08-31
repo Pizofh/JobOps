@@ -100,5 +100,9 @@ function evaluateJobOpsJob_(job, context) {
     );
   }
 
+  if (job.storedFit) {
+    return applyJobOpsStoredFit_(evaluation, job.storedFit, context.config, classification);
+  }
+
   return applyJobOpsUnknownFit_(evaluation, context.config, classification);
 }
