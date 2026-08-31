@@ -3,7 +3,7 @@
 /* global normalizeAndValidateJobOpsConfig_, openConfiguredJobOpsSpreadsheet_ */
 /* global parseJobOpsMessageBatch_, readJobOpsConfig_, readJobOpsJobsForRescore_ */
 /* global readJobOpsRoleFamilies_, readJobOpsScriptProperties_, readJobOpsSourceDefinitions_ */
-/* global updateJobOpsJobEvaluationFields_ */
+/* global updateJobOpsJobEvaluationFields_, ensureJobOpsSheetSize_, ensureJobOpsHeaders_ */
 
 const JOBOPS_FIT_MIGRATION_MESSAGES_PER_RUN = 2;
 
@@ -86,7 +86,7 @@ function runJobOpsFitMigration_() {
           updates.push(target);
           assessedJobs += 1;
         }
-      } catch (error) {
+      } catch {
         failedMessages += 1;
         for (const target of group.targets) {
           Object.assign(target.record, buildJobOpsUnavailableFitRecord_(target.record, config));
