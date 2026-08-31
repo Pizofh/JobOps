@@ -39,9 +39,7 @@ function normalizeJobOpsFitEvidence_(raw) {
   return {
     seniorityLevel: allowedSeniority.includes(seniority) ? seniority : 'UNKNOWN',
     minimumYearsOverall:
-      Number.isFinite(minimumYears) && minimumYears >= 0 && minimumYears <= 50
-        ? minimumYears
-        : 0,
+      Number.isFinite(minimumYears) && minimumYears >= 0 && minimumYears <= 50 ? minimumYears : 0,
     experienceRequirements: lists(source.experienceRequirements),
     hardRequirements: lists(source.hardRequirements),
   };
@@ -231,7 +229,6 @@ function applyJobOpsUnknownFit_(evaluation, config, classification) {
   };
 }
 
-
 /**
  * Reuses a previously assessed adjustment when base scoring is recalculated.
  * This avoids another AI call and preserves migration results.
@@ -267,7 +264,6 @@ function applyJobOpsStoredFit_(evaluation, storedFit, config, classification) {
     FIT_ASSESSED_AT: storedFit.assessedAt || '',
   };
 }
-
 
 /**
  * Prevents a strategically direct title from staying HIGH when explicit
