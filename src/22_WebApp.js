@@ -1,7 +1,7 @@
 /* global HtmlService, JOBOPS_APPLICATION_STATUSES, JOBOPS_ERROR_CODES, JOBOPS_SHEET_HEADERS */
 /* global JOBOPS_SHEET_NAMES, LockService, addJobOpsBusinessDays_, assertValidJobOpsScriptProperties_ */
 /* global createJobOpsError_, normalizeAndValidateJobOpsConfig_, normalizeJobOpsSingleLineText_ */
-/* global runJobOpsIngestion_ */
+/* global runJobOpsIngestion_, runJobOpsFitMigration_, ensureJobOpsFitSchema_ */
 /* global openConfiguredJobOpsSpreadsheet_, readJobOpsConfig_, readJobOpsJobsForRescore_ */
 /* global readJobOpsScriptProperties_ */
 
@@ -38,6 +38,7 @@ function getJobOpsWebDashboard() {
   const properties = readJobOpsScriptProperties_();
   assertValidJobOpsScriptProperties_(properties);
   const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+  ensureJobOpsFitSchema_(spreadsheet);
   const targets = readJobOpsJobsForRescore_(spreadsheet);
   return buildJobOpsWebDashboard_(
     targets.map((target) => target.record),
@@ -52,6 +53,15 @@ function getJobOpsWebDashboard() {
  */
 function runJobOpsWebIngestion() {
   return runJobOpsIngestion_(false);
+}
+
+/**
+ * Runs one bounded in-place historical fit migration batch.
+ *
+ * @returns {Object}
+ */
+function runJobOpsWebFitMigration() {
+  return runJobOpsFitMigration_();
 }
 
 /**
@@ -74,6 +84,7 @@ function updateJobOpsWebJob(input) {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    ensureJobOpsFitSchema_(spreadsheet);
     const sheet = spreadsheet.getSheetByName(JOBOPS_SHEET_NAMES.JOBS);
     if (!sheet) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, 'Missing Jobs sheet.');
@@ -158,6 +169,7 @@ function buildJobOpsWebDashboard_(records, now) {
       ['APPLIED', 'FOLLOW_UP', 'SCREENING', 'TECHNICAL', 'OFFER'].includes(job.status),
     ).length,
     followUpsDue: jobs.filter((job) => job.followUpDue).length,
+    pendingFit: jobs.filter((job) => !job.fitVersion).length,
   };
 
   return {
@@ -192,7 +204,14 @@ function buildJobOpsWebJobViewModel_(record, now) {
     workMode: normalizeJobOpsSingleLineText_(record.WORK_MODE),
     source: normalizeJobOpsSingleLineText_(record.SOURCE),
     roleFamily: normalizeJobOpsSingleLineText_(record.ROLE_FAMILY),
-    score: Number(record.MATCH_SCORE) || 0,
+    score: Number(record.FINAL_SCORE) || Number(record.MATCH_SCORE) || 0,
+    matchScore: Number(record.MATCH_SCORE) || 0,
+    finalScore: Number(record.FINAL_SCORE) || Number(record.MATCH_SCORE) || 0,
+    fitLevel: normalizeJobOpsSingleLineText_(record.FIT_LEVEL).toUpperCase() || 'UNKNOWN',
+    fitAdjustment: Number(record.FIT_ADJUSTMENT) || 0,
+    fitReasons: normalizeJobOpsMultilineText_(record.FIT_REASONS),
+    fitProvider: normalizeJobOpsSingleLineText_(record.FIT_PROVIDER),
+    fitVersion: normalizeJobOpsSingleLineText_(record.FIT_VERSION),
     priority: normalizeJobOpsSingleLineText_(record.PRIORITY).toUpperCase(),
     salary: normalizeJobOpsSingleLineText_(record.SALARY),
     experience: normalizeJobOpsSingleLineText_(record.EXPERIENCE_REQUESTED),
@@ -457,6 +476,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       </div>
       <div class="actions">
         <button class="btn" id="refreshBtn">Actualizar</button>
+        <button class="btn" id="fitBtn">Mejorar scoring</button>
         <button class="btn primary" id="ingestBtn">Procesar alertas</button>
       </div>
     </header>
@@ -497,6 +517,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
     function setBusy(value) {
       document.body.classList.toggle('loading', value);
       document.getElementById('ingestBtn').disabled = value;
+      document.getElementById('fitBtn').disabled = value;
       document.getElementById('refreshBtn').disabled = value;
     }
 
@@ -519,7 +540,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       var c = state.payload.counts;
       var root = document.getElementById('stats'); root.replaceChildren();
       [['Visibles',c.total],['HIGH',c.high],['REVIEW',c.review],['OPTIONAL',c.optional],
-       ['Aplicadas',c.applied],['Follow-ups vencidos',c.followUpsDue]].forEach(function(x){
+       ['Sin fit IA',c.pendingFit],['Follow-ups vencidos',c.followUpsDue]].forEach(function(x){
         root.appendChild(stat(x[0], x[1]));
       });
     }
@@ -572,25 +593,28 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       });
       left.append(title, company, meta);
       var scoreWrap = document.createElement('div'); scoreWrap.style.textAlign='right';
-      var score = document.createElement('div'); score.className='score'; score.textContent=job.score;
+      var score = document.createElement('div'); score.className='score'; score.textContent=job.finalScore;
+      score.title='Base '+job.matchScore+(job.fitVersion ? ' · Fit '+(job.fitAdjustment>=0?'+':'')+job.fitAdjustment : ' · fit pendiente');
       var badge = document.createElement('span'); badge.className='badge '+job.priority; badge.textContent=job.priority;
       scoreWrap.append(score,badge);
       if(job.followUpDue){ var due=document.createElement('div'); due.className='badge due'; due.style.marginTop='6px'; due.textContent='FOLLOW-UP'; scoreWrap.appendChild(due); }
       top.append(left,scoreWrap); card.appendChild(top);
 
       var details=document.createElement('div'); details.className='details';
-      [['Salario',job.salary],['Experiencia',job.experience],['CV',job.recommendedCv],['Seguimiento',job.followUpDate]]
+      [['Salario',job.salary],['Experiencia',job.experience],['Fit',job.fitLevel+(job.fitVersion ? ' ('+(job.fitAdjustment>=0?'+':'')+job.fitAdjustment+')' : ' · pendiente')],['Seguimiento',job.followUpDate]]
         .forEach(function(x){ var d=detail(x[0],x[1]); if(d) details.appendChild(d); });
       card.appendChild(details);
 
       var signals=document.createElement('div'); signals.className='signals';
       String(job.strongMatches||'').split(/\n+/).filter(Boolean).slice(0,4).forEach(function(x){signals.appendChild(signal(x,false));});
       String(job.riskFlags||'').split(/\n+/).filter(Boolean).slice(0,3).forEach(function(x){signals.appendChild(signal(x,true));});
+      String(job.fitReasons||'').split(/\n+/).filter(Boolean).slice(0,3).forEach(function(x){signals.appendChild(signal('Fit: '+x,job.fitAdjustment<0));});
       if(job.technologies){ signals.appendChild(signal(job.technologies,false)); }
       card.appendChild(signals);
 
       var actions=document.createElement('div'); actions.className='card-actions';
-      actions.append(linkButton('Abrir vacante',job.jobUrl),linkButton('Abrir CV recomendado',job.cvLink));
+      actions.appendChild(linkButton('Abrir vacante',job.jobUrl));
+      if(job.cvLink){ actions.appendChild(linkButton('Abrir CV recomendado',job.cvLink)); }
       card.appendChild(actions);
 
       var edit=document.createElement('div'); edit.className='edit';
@@ -633,6 +657,22 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
     }
 
     document.getElementById('refreshBtn').addEventListener('click', function(){ loadDashboard(true); });
+    document.getElementById('fitBtn').addEventListener('click', async function(){
+      setBusy(true);
+      var total=0, failed=0, guard=0;
+      try {
+        while(guard < 40) {
+          var result=await callServer('runJobOpsWebFitMigration');
+          total += result.assessedJobs || 0;
+          failed += result.failedMessages || 0;
+          guard += 1;
+          if(result.done || !result.processedMessages) break;
+        }
+        showToast('Fit actualizado: '+total+' vacantes'+(failed ? ' · '+failed+' correos sin evidencia' : ''));
+        await loadDashboard(false);
+      } catch(error){ showToast((error && error.message)||'Falló la mejora de scoring',true); }
+      finally { setBusy(false); }
+    });
     document.getElementById('ingestBtn').addEventListener('click', async function(){
       setBusy(true);
       try {
