@@ -1,3 +1,4 @@
+/* global applyJobOpsFitToEvaluation_, applyJobOpsStoredFit_, applyJobOpsUnknownFit_ */
 /**
  * Converts editable CVProfiles rows to enabled profile definitions.
  *
