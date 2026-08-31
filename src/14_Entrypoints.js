@@ -305,6 +305,16 @@ function buildJobOpsEvaluationInputFromRecord_(record, overrides) {
     salary: record.SALARY,
     experienceRequested: record.EXPERIENCE_REQUESTED,
     isRecruiter: record.SOURCE === 'Recruiter' || Boolean(record.RECRUITER_EMAIL),
+    storedFit: normalizeJobOpsSingleLineText_(record.FIT_VERSION)
+      ? {
+          level: record.FIT_LEVEL,
+          adjustment: record.FIT_ADJUSTMENT,
+          reasons: record.FIT_REASONS,
+          provider: record.FIT_PROVIDER,
+          version: record.FIT_VERSION,
+          assessedAt: record.FIT_ASSESSED_AT,
+        }
+      : null,
     ...(overrides || {}),
   };
 }
