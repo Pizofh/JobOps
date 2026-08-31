@@ -1,6 +1,6 @@
 # JobOps
 
-JobOps es un sistema personal y privado para organizar una búsqueda de empleo desde Google Apps Script, Gmail y Google Sheets. El repositorio contiene la configuración inicial, la ingestión, la evaluación y la **Fase 5** de flujo de aplicaciones y resumen diario.
+JobOps es un sistema personal y privado para organizar una búsqueda de empleo desde Google Apps Script, Gmail y Google Sheets. Incluye un centro de operación web privado para revisar y gestionar únicamente oportunidades HIGH, REVIEW y OPTIONAL. El repositorio contiene la configuración inicial, la ingestión, la evaluación y la **Fase 5** de flujo de aplicaciones y resumen diario.
 
 `setupJobOps()` crea de forma no destructiva las hojas, datos configurables, validaciones, formato y etiquetas de Gmail. `dryRunIngestion()` inspecciona mensajes recientes sin modificar Gmail ni Sheets y `ingestJobs()` guarda vacantes detectadas, errores limitados y etiquetas operativas. Los triggers y el resumen existen, pero solo se activan manualmente con `installJobOpsTriggers()` después de validar el dry run.
 
@@ -48,7 +48,7 @@ Apps Script representa el código de servidor como archivos de script y su edito
 
 ## IA opcional para alertas con varias vacantes
 
-JobOps usa una cadena de proveedores únicamente para extraer alertas multi-vacante de LinkedIn/Indeed y asignar una familia semántica. El scoring, la deduplicación y la escritura en Sheets siguen siendo lógica local.
+JobOps usa una cadena de proveedores únicamente para extraer alertas multi-vacante de LinkedIn/Indeed y asignar una familia semántica. El scoring, la deduplicación y la escritura en Sheets siguen siendo lógica local. La IA también puede extraer seniority y años de experiencia explícitos; JobOps convierte esa evidencia en un ajuste determinístico de fit, sin permitir que el modelo invente o asigne el score.
 
 Orden de fallback: **Gemini → Groq → OpenRouter**. Los errores transitorios 429/5xx se reintentan de forma acotada antes de pasar al siguiente proveedor.
 
@@ -61,6 +61,12 @@ Script Properties opcionales:
 Solo necesitas una API key para habilitar IA; con varias configuradas se activa el fallback. Las claves nunca deben guardarse en Git. JobOps redacciona direcciones y URLs personalizadas antes de enviar evidencia, usa referencias opacas para enlaces y valida localmente cada vacante devuelta.
 
 Para validar la integración, conserva `DRY_RUN = true`, despliega manualmente con `clasp` y ejecuta `dryRunIngestion()`.
+
+## Centro de operación web
+
+La Web App de Apps Script expone únicamente vacantes `HIGH`, `REVIEW` y `OPTIONAL`; las `LOW` se filtran en el servidor. Permite buscar, filtrar, abrir la vacante y el CV recomendado, cambiar estado, guardar notas y lanzar una ingesta manual.
+
+El despliegue sigue siendo manual desde Apps Script. Configúrala para ejecutarse como el propietario y con acceso restringido al propio usuario; JobOps no requiere un servidor adicional ni una base de datos externa.
 
 ## Documentación
 

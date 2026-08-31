@@ -42,6 +42,13 @@ const JOBOPS_SHEET_HEADERS = Object.freeze({
     'APPLIED_DATE',
     'FOLLOW_UP_DATE',
     'NOTES',
+    'FIT_LEVEL',
+    'FIT_ADJUSTMENT',
+    'FINAL_SCORE',
+    'FIT_REASONS',
+    'FIT_PROVIDER',
+    'FIT_VERSION',
+    'FIT_ASSESSED_AT',
   ]),
   ScoringRules: Object.freeze([
     'RULE_ID',
@@ -1453,4 +1460,5 @@ const JOBOPS_ERROR_CODES = Object.freeze({
   DUPLICATE_MESSAGE: 'DUPLICATE_MESSAGE',
   DIGEST: 'DIGEST_ERROR',
   INGESTION_LOCK: 'INGESTION_LOCK_ERROR',
+  WEB_APP: 'WEB_APP_ERROR',
 });

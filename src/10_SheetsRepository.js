@@ -392,6 +392,7 @@ function formatJobOpsSheet_(sheet, headers) {
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'TIMESTAMP', 'yyyy-mm-dd hh:mm');
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'APPLIED_DATE', 'yyyy-mm-dd');
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'FOLLOW_UP_DATE', 'yyyy-mm-dd');
+  setJobOpsColumnFormatIfPresent_(sheet, headers, 'FIT_ASSESSED_AT', 'yyyy-mm-dd hh:mm');
 }
 
 /**
@@ -667,6 +668,15 @@ function updateJobOpsJobEvaluationFields_(spreadsheet, targets) {
     ['ROLE_FAMILY', 'MATCH_SCORE', 'PRIORITY'],
     ['RECOMMENDED_CV', 'CV_LINK'],
     ['STRONG_MATCHES', 'RISK_FLAGS'],
+    [
+      'FIT_LEVEL',
+      'FIT_ADJUSTMENT',
+      'FINAL_SCORE',
+      'FIT_REASONS',
+      'FIT_PROVIDER',
+      'FIT_VERSION',
+      'FIT_ASSESSED_AT',
+    ],
   ];
 
   for (const fields of fieldGroups) {
