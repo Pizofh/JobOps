@@ -48,7 +48,7 @@ Apps Script representa el código de servidor como archivos de script y su edito
 
 ## IA opcional para alertas con varias vacantes
 
-JobOps usa una cadena de proveedores únicamente para extraer alertas multi-vacante de LinkedIn/Indeed y asignar una familia semántica. El scoring, la deduplicación y la escritura en Sheets siguen siendo lógica local.
+JobOps usa una cadena de proveedores únicamente para extraer alertas multi-vacante de LinkedIn/Indeed y asignar una familia semántica. El scoring, la deduplicación y la escritura en Sheets siguen siendo lógica local. La IA también puede extraer seniority y años de experiencia explícitos; JobOps convierte esa evidencia en un ajuste determinístico de fit, sin permitir que el modelo invente o asigne el score.
 
 Orden de fallback: **Gemini → Groq → OpenRouter**. Los errores transitorios 429/5xx se reintentan de forma acotada antes de pasar al siguiente proveedor.
 
