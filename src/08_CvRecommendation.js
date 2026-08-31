@@ -79,7 +79,7 @@ function evaluateJobOpsJob_(job, context) {
     classification.recommendedCvProfile,
   );
 
-  return {
+  const evaluation = {
     ROLE_FAMILY: classification.roleFamily,
     MATCH_SCORE: totalScore,
     PRIORITY: getJobOpsPriorityForEvaluation_(totalScore, context.config, classification),
@@ -88,4 +88,17 @@ function evaluateJobOpsJob_(job, context) {
     STRONG_MATCHES: strongMatches.join('\n'),
     RISK_FLAGS: score.riskFlags.join('\n'),
   };
+
+  if (job.fitEvidence) {
+    return applyJobOpsFitToEvaluation_(
+      evaluation,
+      job.fitEvidence,
+      context.config,
+      classification,
+      job.aiProvider,
+      new Date(),
+    );
+  }
+
+  return applyJobOpsUnknownFit_(evaluation, context.config, classification);
 }
