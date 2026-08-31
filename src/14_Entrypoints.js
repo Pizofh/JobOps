@@ -376,6 +376,7 @@ function runJobOpsDailyDigest_() {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    ensureJobOpsFitSchema_(spreadsheet);
     const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
     if (!config.DIGEST_ENABLED) {
       return { ok: true, sent: false, reason: 'DIGEST_DISABLED' };
@@ -446,6 +447,7 @@ function runJobOpsRescore_() {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    ensureJobOpsFitSchema_(spreadsheet);
     const schemaErrors = getJobOpsSheetSchemaErrors_(spreadsheet);
     if (schemaErrors.length > 0) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, schemaErrors.join(' '));
