@@ -187,7 +187,8 @@ function findJobOpsFitParsedMatch_(record, parsedJobs) {
   const position = foldJobOpsText_(record.POSITION);
   return (
     parsedJobs.find(
-      (job) => foldJobOpsText_(job.company) === company && foldJobOpsText_(job.position) === position,
+      (job) =>
+        foldJobOpsText_(job.company) === company && foldJobOpsText_(job.position) === position,
     ) || null
   );
 }
@@ -210,6 +211,7 @@ function buildJobOpsUnavailableFitRecord_(record, config) {
     FIT_PROVIDER: 'UNAVAILABLE',
     FIT_VERSION: JOBOPS_FIT_VERSION,
     FIT_ASSESSED_AT: new Date(),
-    PRIORITY: normalizeJobOpsSingleLineText_(record.PRIORITY) || getJobOpsPriorityForScore_(score, config),
+    PRIORITY:
+      normalizeJobOpsSingleLineText_(record.PRIORITY) || getJobOpsPriorityForScore_(score, config),
   };
 }
