@@ -245,3 +245,33 @@ test('AI evidence strips email addresses, footer data and personalized URLs', ()
   assert.ok(redacted.includes('sourceJobId=aaa111'));
   assert.equal(redacted.includes('private-token'), false);
 });
+
+
+test('AI normalization infers work mode from location and rejects posting-age as experience', () => {
+  const context = loadJobOpsContext();
+  const normalized = context.normalizeJobOpsAiJob_(
+    {
+      sourceJobId: 'job-1',
+      jobUrl: 'https://www.linkedin.com/jobs/view/job-1/',
+      company: 'Acme',
+      position: 'DevOps Engineer',
+      location: 'Bogotá (En remoto)',
+      workMode: 'UNKNOWN',
+      salary: '',
+      experienceRequested: 'hace 3 días',
+      requiredTechnologies: ['AWS'],
+      descriptionText: '',
+      seniorityLevel: 'UNKNOWN',
+      minimumYearsOverall: 0,
+      experienceRequirements: [],
+      hardRequirements: [],
+    },
+    { source: 'LinkedIn' },
+  );
+
+  assert.equal(normalized.workMode, 'REMOTE');
+  assert.equal(normalized.experienceRequested, '');
+  assert.equal(context.normalizeJobOpsAiExperienceRequested_('Junior'), 'Junior');
+  assert.equal(context.normalizeJobOpsAiExperienceRequested_('3+ years'), '3+ years');
+  assert.equal(context.normalizeJobOpsAiExperienceRequested_('II'), '');
+});
