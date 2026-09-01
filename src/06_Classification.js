@@ -152,10 +152,7 @@ function getJobOpsExplicitTargetTitleFamily_(position, roleFamilies) {
 
   if (/\b(?:devops|devsecops)\b/u.test(title)) {
     family = 'DEVOPS_CLOUDOPS_JR';
-  } else if (
-    /\b(?:site reliability|sre)\b/u.test(title) ||
-    /\bplatform engineer\b/u.test(title)
-  ) {
+  } else if (/\b(?:site reliability|sre)\b/u.test(title) || /\bplatform engineer\b/u.test(title)) {
     family = 'PLATFORM_SRE_ASSOCIATE';
   } else if (
     /\bcloud\b/u.test(title) &&
@@ -172,8 +169,7 @@ function getJobOpsExplicitTargetTitleFamily_(position, roleFamilies) {
 
   return (
     (Array.isArray(roleFamilies) ? roleFamilies : []).find(
-      (definition) =>
-        definition.roleFamily === family && definition.strategicLevel !== 'UNRELATED',
+      (definition) => definition.roleFamily === family && definition.strategicLevel !== 'UNRELATED',
     ) || null
   );
 }
