@@ -21,11 +21,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Format probe
-        run: |
-          npx prettier --write src/15_GeminiService.js tests/scoringCalibration.test.js
-          echo "GEMINI_B64=$(base64 -w0 src/15_GeminiService.js)"
-          echo "CAL_B64=$(base64 -w0 tests/scoringCalibration.test.js)"
-          exit 1
       - name: Validate
         run: npm run ci
