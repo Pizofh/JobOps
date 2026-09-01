@@ -5,10 +5,12 @@ const JOBOPS_STRATEGIC_LEVEL_SCORE_BONUSES = Object.freeze({
   UNRELATED: 0,
 });
 
-const JOBOPS_LEGACY_ENTRY_LEVEL_PATTERN =
-  '\\b(?:junior|jr\\.?|associate|analyst|engineer i|level 1|entry level)\\b';
+const JOBOPS_LEGACY_ENTRY_LEVEL_PATTERNS = Object.freeze([
+  '\\b(?:junior|jr\\.?|associate|analyst|engineer i|level 1|entry level)\\b',
+  '\\b(?:junior|jr\\.?|associate|analyst|engineer i|level 1|entry level|intern(?:ship)?|trainee|practicante)\\b',
+]);
 const JOBOPS_ENTRY_LEVEL_PATTERN =
-  '\\b(?:junior|jr\\.?|associate|analyst|engineer i|level 1|entry level|intern(?:ship)?|trainee|practicante)\\b';
+  '\\b(?:junior|jr\\.?|associate|engineer i|level 1|entry level|intern(?:ship)?|trainee|practicante)\\b';
 
 /**
  * Gives target role families a small transparent baseline so sparse job-alert
@@ -49,7 +51,7 @@ function migrateJobOpsEntryLevelScoringRule_(spreadsheet) {
   if (currentPattern === JOBOPS_ENTRY_LEVEL_PATTERN) {
     return false;
   }
-  if (currentPattern !== JOBOPS_LEGACY_ENTRY_LEVEL_PATTERN) {
+  if (!JOBOPS_LEGACY_ENTRY_LEVEL_PATTERNS.includes(currentPattern)) {
     return false;
   }
 
