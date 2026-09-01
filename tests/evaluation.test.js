@@ -207,7 +207,6 @@ test('HIGH requires the global high threshold even for direct or bridge roles', 
   );
 });
 
-
 test('direct roles promote to HIGH at 12 and entry-level direct roles at 10', () => {
   const context = loadJobOpsContext();
   const config = scoringConfig();
