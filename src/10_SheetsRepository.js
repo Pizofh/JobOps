@@ -949,9 +949,10 @@ function getJobOpsPriorityForScore_(score, config) {
  * @param {number} score
  * @param {Object} config
  * @param {{strategicLevel: string, minimumReviewScore: number}} classification
+ * @param {Object=} job
  * @returns {string}
  */
-function getJobOpsPriorityForEvaluation_(score, config, classification) {
+function getJobOpsPriorityForEvaluation_(score, config, classification, job) {
   const level = normalizeJobOpsSingleLineText_(classification.strategicLevel).toUpperCase();
   if (level === 'UNRELATED') {
     return 'LOW';
@@ -964,7 +965,17 @@ function getJobOpsPriorityForEvaluation_(score, config, classification) {
     : config.REVIEW_THRESHOLD;
 
   if (level === 'DIRECT') {
-    if (score >= config.HIGH_PRIORITY_THRESHOLD) {
+    const title = foldJobOpsText_(job && job.position);
+    const explicitEntryLevel =
+      /\b(?:junior|jr\.?|associate|engineer i|level 1|entry level|intern(?:ship)?|trainee|practicante)\b/u.test(
+        title,
+      );
+
+    if (
+      score >= config.HIGH_PRIORITY_THRESHOLD ||
+      score >= 12 ||
+      (explicitEntryLevel && score >= 10)
+    ) {
       return 'HIGH';
     }
     if (score >= minimumReviewScore) {
