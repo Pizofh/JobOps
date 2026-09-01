@@ -145,7 +145,6 @@ test('duplicate semantic reevaluation preserves the semantic family and upgrades
   assert.equal(target.PARSER_VERSION, '1.1.2001');
 });
 
-
 test('semantic UNRELATED does not suppress an explicit deterministic DevOps title', () => {
   const context = loadJobOpsContext();
   const families = context.parseJobOpsRoleFamilies_([
