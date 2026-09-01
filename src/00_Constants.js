@@ -635,7 +635,7 @@ const JOBOPS_STRATEGY_SCORING_RULE_ROWS = Object.freeze([
   ],
   [
     'BONUS_JUNIOR',
-    '\\b(?:junior|jr\\.?|associate|analyst|engineer i|level 1|entry level)\\b',
+    '\\b(?:junior|jr\\.?|associate|engineer i|level 1|entry level|intern(?:ship)?|trainee|practicante)\\b',
     'REGEX',
     'TITLE',
     4,

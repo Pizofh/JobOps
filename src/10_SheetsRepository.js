@@ -964,14 +964,17 @@ function getJobOpsPriorityForEvaluation_(score, config, classification) {
     : config.REVIEW_THRESHOLD;
 
   if (level === 'DIRECT') {
-    if (score >= minimumReviewScore) {
+    if (score >= config.HIGH_PRIORITY_THRESHOLD) {
       return 'HIGH';
+    }
+    if (score >= minimumReviewScore) {
+      return 'REVIEW';
     }
     return score >= config.OPTIONAL_THRESHOLD ? 'REVIEW' : basePriority;
   }
 
   if (level === 'BRIDGE') {
-    if (score >= Math.max(config.REVIEW_THRESHOLD, minimumReviewScore)) {
+    if (score >= config.HIGH_PRIORITY_THRESHOLD) {
       return 'HIGH';
     }
     if (score >= minimumReviewScore) {

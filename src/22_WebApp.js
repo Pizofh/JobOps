@@ -1,6 +1,7 @@
 /* global HtmlService, JOBOPS_APPLICATION_STATUSES, JOBOPS_ERROR_CODES, JOBOPS_SHEET_HEADERS */
 /* global JOBOPS_SHEET_NAMES, LockService, addJobOpsBusinessDays_, assertValidJobOpsScriptProperties_ */
 /* global createJobOpsError_, normalizeAndValidateJobOpsConfig_, normalizeJobOpsSingleLineText_ */
+/* global normalizeJobOpsAiExperienceRequested_ */
 /* global runJobOpsIngestion_, runJobOpsFitMigration_, ensureJobOpsFitSchema_ */
 /* global openConfiguredJobOpsSpreadsheet_, readJobOpsConfig_, readJobOpsJobsForRescore_ */
 /* global readJobOpsScriptProperties_ */
@@ -201,7 +202,10 @@ function buildJobOpsWebJobViewModel_(record, now) {
     company: normalizeJobOpsSingleLineText_(record.COMPANY) || 'Empresa no indicada',
     position: normalizeJobOpsSingleLineText_(record.POSITION) || 'Cargo no indicado',
     location: normalizeJobOpsSingleLineText_(record.LOCATION),
-    workMode: normalizeJobOpsSingleLineText_(record.WORK_MODE),
+    workMode:
+      normalizeJobOpsSingleLineText_(record.WORK_MODE).toUpperCase() === 'UNKNOWN'
+        ? detectJobOpsWorkMode_([record.LOCATION, record.POSITION].filter(Boolean).join('\n'))
+        : normalizeJobOpsSingleLineText_(record.WORK_MODE),
     source: normalizeJobOpsSingleLineText_(record.SOURCE),
     roleFamily: normalizeJobOpsSingleLineText_(record.ROLE_FAMILY),
     score: Number(record.FINAL_SCORE) || Number(record.MATCH_SCORE) || 0,
@@ -214,7 +218,7 @@ function buildJobOpsWebJobViewModel_(record, now) {
     fitVersion: normalizeJobOpsSingleLineText_(record.FIT_VERSION),
     priority: normalizeJobOpsSingleLineText_(record.PRIORITY).toUpperCase(),
     salary: normalizeJobOpsSingleLineText_(record.SALARY),
-    experience: normalizeJobOpsSingleLineText_(record.EXPERIENCE_REQUESTED),
+    experience: normalizeJobOpsAiExperienceRequested_(record.EXPERIENCE_REQUESTED),
     technologies: normalizeJobOpsSingleLineText_(record.REQUIRED_TECHNOLOGIES),
     strongMatches: normalizeJobOpsMultilineText_(record.STRONG_MATCHES),
     riskFlags: normalizeJobOpsMultilineText_(record.RISK_FLAGS),

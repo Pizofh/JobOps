@@ -508,6 +508,13 @@ function normalizeJobOpsAiJob_(job, detection) {
     ? job.requiredTechnologies.map(cleanJobOpsParsedField_).filter(Boolean)
     : [];
   const normalizedWorkMode = normalizeJobOpsSingleLineText_(job.workMode).toUpperCase();
+  const inferredWorkMode = detectJobOpsWorkMode_(
+    [job.workMode, job.location, job.position, descriptionText].filter(Boolean).join('\n'),
+  );
+  const workMode =
+    JOBOPS_WORK_MODES.includes(normalizedWorkMode) && normalizedWorkMode !== 'UNKNOWN'
+      ? normalizedWorkMode
+      : inferredWorkMode;
   const sourceName = normalizeJobOpsSingleLineText_(detection.source) || 'Platform';
   const parserSource = sourceName.replace(/[^A-Za-z0-9]/gu, '') || 'Platform';
 
@@ -517,10 +524,10 @@ function normalizeJobOpsAiJob_(job, detection) {
     company: job.company,
     position: job.position,
     location: cleanJobOpsParsedField_(job.location),
-    workMode: JOBOPS_WORK_MODES.includes(normalizedWorkMode) ? normalizedWorkMode : 'UNKNOWN',
+    workMode,
     jobUrl: job.jobUrl,
     salary: cleanJobOpsParsedField_(job.salary),
-    experienceRequested: cleanJobOpsParsedField_(job.experienceRequested),
+    experienceRequested: normalizeJobOpsAiExperienceRequested_(job.experienceRequested),
     requiredTechnologies: Array.from(new Set(technologies)).slice(0, 30),
     descriptionText,
     fitEvidence: {
@@ -540,6 +547,37 @@ function normalizeJobOpsAiJob_(job, detection) {
     confidence: job.sourceJobId && job.jobUrl ? 0.95 : 0.8,
     warnings: [`Extracted from a multi-job ${sourceName} alert with Gemini structured output.`],
   };
+}
+
+/**
+ * Keeps only real seniority/experience signals from AI extraction. Platform
+ * alert metadata such as "hace 3 días" or "recién publicado" is not experience.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function normalizeJobOpsAiExperienceRequested_(value) {
+  const text = cleanJobOpsParsedField_(value);
+  if (!text) {
+    return '';
+  }
+
+  const folded = foldJobOpsText_(text);
+  if (
+    /\b(?:hace\s+\d+\s+dias?|recien publicado|posted\s+\d+\s+days?\s+ago|today|hoy)\b/u.test(folded)
+  ) {
+    return '';
+  }
+
+  if (
+    /\b(?:\d+\s*\+?\s*(?:years?|yrs?|anos?)|junior|jr\.?|associate|entry|mid(?:[- ]level)?|senior|sr\.?|lead|staff|principal|manager|director)\b/u.test(
+      folded,
+    )
+  ) {
+    return text;
+  }
+
+  return '';
 }
 
 /**
