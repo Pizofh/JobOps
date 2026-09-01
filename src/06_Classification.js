@@ -152,7 +152,10 @@ function getJobOpsExplicitTargetTitleFamily_(position, roleFamilies) {
 
   if (/\b(?:devops|devsecops)\b/u.test(title)) {
     family = 'DEVOPS_CLOUDOPS_JR';
-  } else if (/\b(?:site reliability|sre)\b/u.test(title) || /\bplatform engineer\b/u.test(title)) {
+  } else if (
+    /\b(?:site reliability|sre)\b/u.test(title) ||
+    /\bplatform engineer\b/u.test(title)
+  ) {
     family = 'PLATFORM_SRE_ASSOCIATE';
   } else if (
     /\bcloud\b/u.test(title) &&
