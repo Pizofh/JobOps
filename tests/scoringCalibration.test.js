@@ -66,11 +66,13 @@ test('entry-level migration upgrades the previous analyst-inclusive standard rul
   const rowNumber = values.findIndex((candidate) => candidate[0] === 'BONUS_JUNIOR') + 1;
   const patternColumn = headers.indexOf('PATTERN') + 1;
 
-  sheet.getRange(rowNumber, patternColumn).setValues([
-    [
-      '\\b(?:junior|jr\\.?|associate|analyst|engineer i|level 1|entry level|intern(?:ship)?|trainee|practicante)\\b',
-    ],
-  ]);
+  sheet
+    .getRange(rowNumber, patternColumn)
+    .setValues([
+      [
+        '\\b(?:junior|jr\\.?|associate|analyst|engineer i|level 1|entry level|intern(?:ship)?|trainee|practicante)\\b',
+      ],
+    ]);
 
   const result = context.setupJobOps();
   const updated = sheet.getDataRange().getValues()[rowNumber - 1][patternColumn - 1];
