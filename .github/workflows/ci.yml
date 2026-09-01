@@ -21,11 +21,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Format probe
-        run: |
-          npx prettier --write src/23_FitAssessment.js src/24_FitMigration.js
-          echo "FILE23_B64=$(base64 -w0 src/23_FitAssessment.js)"
-          echo "FILE24_B64=$(base64 -w0 src/24_FitMigration.js)"
-          exit 1
       - name: Validate
         run: npm run ci
