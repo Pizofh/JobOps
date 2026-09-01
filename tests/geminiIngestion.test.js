@@ -246,7 +246,6 @@ test('AI evidence strips email addresses, footer data and personalized URLs', ()
   assert.equal(redacted.includes('private-token'), false);
 });
 
-
 test('AI normalization infers work mode from location and rejects posting-age as experience', () => {
   const context = loadJobOpsContext();
   const normalized = context.normalizeJobOpsAiJob_(
