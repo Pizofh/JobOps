@@ -141,7 +141,11 @@ function runJobOpsIngestion_(forceDryRun) {
 
     for (const envelope of inbox.candidates) {
       try {
-        const parsedJobs = parseJobOpsMessageBatch_(envelope.input, sourceDefinitions);
+        const parsedJobs = parseJobOpsMessageBatch_(
+          envelope.input,
+          sourceDefinitions,
+          evaluationContext.roleFamilies,
+        );
         parsedJobCount += parsedJobs.length;
 
         for (const parsed of parsedJobs) {
@@ -171,14 +175,11 @@ function runJobOpsIngestion_(forceDryRun) {
                 duplicateMatch.target.record,
                 mergeJobOpsDuplicateRecord_(duplicateMatch.target.record, record),
               );
-              Object.assign(
+              applyJobOpsDuplicateEvaluation_(
                 duplicateMatch.target.record,
-                evaluateJobOpsJob_(
-                  buildJobOpsEvaluationInputFromRecord_(duplicateMatch.target.record, {
-                    descriptionText: parsed.descriptionText,
-                  }),
-                  evaluationContext,
-                ),
+                parsed,
+                record,
+                evaluationContext,
               );
               registerJobOpsCandidate_(candidate, deduplicationIndex, duplicateMatch.target);
 
@@ -306,6 +307,35 @@ function buildJobOpsEvaluationInputFromRecord_(record, overrides) {
     isRecruiter: record.SOURCE === 'Recruiter' || Boolean(record.RECRUITER_EMAIL),
     ...(overrides || {}),
   };
+}
+
+/**
+ * Re-evaluates one exact duplicate with the fresh parser evidence. A valid
+ * semantic family is preserved so existing rows can migrate from deterministic
+ * classification without creating a second job.
+ *
+ * @param {Object<string, *>} targetRecord
+ * @param {Object} parsed
+ * @param {Object<string, *>} incomingRecord
+ * @param {{roleFamilies: Object[], scoringRules: Object[], cvProfiles: Object[], config: Object}} evaluationContext
+ */
+function applyJobOpsDuplicateEvaluation_(targetRecord, parsed, incomingRecord, evaluationContext) {
+  const semanticRoleFamily = normalizeJobOpsSingleLineText_(parsed.semanticRoleFamily);
+  const evaluation = evaluateJobOpsJob_(
+    buildJobOpsEvaluationInputFromRecord_(targetRecord, {
+      descriptionText: parsed.descriptionText,
+      semanticRoleFamily,
+    }),
+    evaluationContext,
+  );
+  Object.assign(targetRecord, evaluation);
+
+  if (semanticRoleFamily && evaluation.ROLE_FAMILY === semanticRoleFamily) {
+    targetRecord.PARSER = incomingRecord.PARSER;
+    targetRecord.PARSER_VERSION = incomingRecord.PARSER_VERSION;
+  }
+
+  return targetRecord;
 }
 
 /**

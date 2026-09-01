@@ -105,10 +105,53 @@ function isJobOpsAdministrativeMessage_(effective) {
     'your job alert is now active',
     'your job alert has been activated',
     'job alert confirmation',
+    'te has postulado a una oferta de empleo exitosamente',
+    'te postulaste a una oferta de empleo exitosamente',
+    'application submitted successfully',
+    'your application was submitted successfully',
+    'postulacion via indeed',
+    'postulacion en indeed',
+    'an update on your application from',
+    'stand out by sending a quick message',
+    'gracias por ser miembro de linkedin',
+    'thanks for being a linkedin member',
   ];
 
   return signals.some((signal) => content.includes(foldJobOpsText_(signal)));
 }
+
+/**
+ * Detects LinkedIn InMail relay messages that contain a genuine technical
+ * opportunity. They should use the recruiter parser instead of the platform
+ * digest parser because these messages do not expose job-card links.
+ *
+ * @param {*} senderEmail
+ * @param {Object} effective
+ * @returns {boolean}
+ */
+function isJobOpsLinkedInRecruiterRelay_(senderEmail, effective) {
+  const sender = foldJobOpsText_(senderEmail);
+  if (!sender.includes('inmail-hit-reply@linkedin.com')) {
+    return false;
+  }
+
+  const content = foldJobOpsText_(`${effective.subject}\n${effective.body}`);
+  const positiveSignals = [
+    'job opportunity',
+    'opportunity',
+    'position',
+    'role',
+    'vacancy',
+    'vacante',
+    'oportunidad',
+  ];
+
+  return (
+    positiveSignals.some((signal) => containsJobOpsSignal_(content, signal)) &&
+    JOBOPS_TECHNICAL_ROLE_SIGNALS.some((signal) => containsJobOpsSignal_(content, signal))
+  );
+}
+
 function detectJobOpsSource_(input, sourceDefinitions) {
   const effective = getEffectiveJobOpsMessage_(input);
   const sender = parseJobOpsSender_(effective.from);
@@ -116,12 +159,29 @@ function detectJobOpsSource_(input, sourceDefinitions) {
   const senderDomain = foldedSender.includes('@') ? foldedSender.split('@').pop() : foldedSender;
   const foldedSubject = foldJobOpsText_(effective.subject);
   const foldedContent = foldJobOpsText_(`${effective.subject}\n${effective.body}`);
+  const recruiterDefinition = sourceDefinitions.find(
+    (definition) => foldJobOpsText_(definition.source) === 'recruiter',
+  );
+
   if (isJobOpsAdministrativeMessage_(effective)) {
     return {
       candidate: false,
       source: 'Generic',
       parserName: 'parseGenericJob',
       isRecruiter: false,
+      effective,
+    };
+  }
+
+  if (
+    recruiterDefinition &&
+    isJobOpsLinkedInRecruiterRelay_(sender.email || effective.from, effective)
+  ) {
+    return {
+      candidate: true,
+      source: recruiterDefinition.source,
+      parserName: 'parseRecruiterJob',
+      isRecruiter: true,
       effective,
     };
   }
@@ -150,9 +210,6 @@ function detectJobOpsSource_(input, sourceDefinitions) {
     }
   }
 
-  const recruiterDefinition = sourceDefinitions.find(
-    (definition) => foldJobOpsText_(definition.source) === 'recruiter',
-  );
   const positiveSignals = recruiterDefinition
     ? recruiterDefinition.subjectPatterns.concat(['opening', 'hiring', 'job opportunity'])
     : ['vacancy', 'position', 'opportunity', 'role', 'vacante', 'oportunidad', 'cargo'];

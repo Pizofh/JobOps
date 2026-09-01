@@ -35,6 +35,17 @@ En **Project Settings → Script Properties** agrega:
 | `SPREADSHEET_ID` | ID del spreadsheet privado, no su URL completa.          |
 | `USER_EMAIL`     | Correo que recibirá los resúmenes en una fase posterior. |
 
+### Script Properties opcionales de IA
+
+Configura una o varias; el orden de fallback es Gemini → Groq → OpenRouter.
+
+- `GEMINI_API_KEY`: proveedor principal cuando está configurado.
+- `GEMINI_MODEL`: modelo Gemini opcional.
+- `GROQ_API_KEY`: primer fallback.
+- `GROQ_MODEL`: opcional; default `openai/gpt-oss-20b`.
+- `OPENROUTER_API_KEY`: segundo fallback.
+- `OPENROUTER_MODEL`: opcional; default `openrouter/free`.
+
 Nunca confirmes `.clasp.json`, credenciales, IDs privados, correos reales, CV ni fixtures sin anonimizar.
 
 ## Inicialización

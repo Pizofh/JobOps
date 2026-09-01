@@ -46,18 +46,21 @@ npm run ci
 
 Apps Script representa el código de servidor como archivos de script y su editor suele mostrarlos como `.gs`. `clasp` admite `.js` localmente; `.clasp.json.example` fija `scriptExtensions: [".js"]`. Esto permite ejecutar las mismas fuentes con Node, ESLint y las pruebas sin compilación ni conversión manual.
 
-## Gemini opcional para alertas con varias vacantes
+## IA opcional para alertas con varias vacantes
 
-JobOps puede usar Gemini únicamente para convertir un digest de Indeed en varias vacantes independientes. La clasificación, el scoring, la deduplicación y la escritura en Sheets siguen siendo lógica local de JobOps.
+JobOps usa una cadena de proveedores únicamente para extraer alertas multi-vacante de LinkedIn/Indeed y asignar una familia semántica. El scoring, la deduplicación y la escritura en Sheets siguen siendo lógica local.
 
-La integración es opt-in mediante Script Properties:
+Orden de fallback: **Gemini → Groq → OpenRouter**. Los errores transitorios 429/5xx se reintentan de forma acotada antes de pasar al siguiente proveedor.
 
-- `GEMINI_API_KEY`: habilita la extracción asistida por Gemini para Indeed.
-- `GEMINI_MODEL`: opcional; por defecto `gemini-2.5-flash-lite`.
+Script Properties opcionales:
 
-La API key nunca debe guardarse en Git. Antes de enviar contenido al modelo, JobOps elimina direcciones de correo, pies de administración y URLs personalizadas; los enlaces de vacantes se representan mediante referencias opacas y se reconstruyen localmente después de validar la respuesta.
+- `GEMINI_API_KEY` / `GEMINI_MODEL`
+- `GROQ_API_KEY` / `GROQ_MODEL` (default: `openai/gpt-oss-20b`)
+- `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` (default: `openrouter/free`)
 
-Para validar la integración, conserva `DRY_RUN = true`, despliega manualmente con `clasp` y ejecuta `dryRunIngestion()`. El resumen de ingestión diferencia `candidateMessages` de `parsedJobs` para mostrar cuántas vacantes produjo realmente el lote.
+Solo necesitas una API key para habilitar IA; con varias configuradas se activa el fallback. Las claves nunca deben guardarse en Git. JobOps redacciona direcciones y URLs personalizadas antes de enviar evidencia, usa referencias opacas para enlaces y valida localmente cada vacante devuelta.
+
+Para validar la integración, conserva `DRY_RUN = true`, despliega manualmente con `clasp` y ejecuta `dryRunIngestion()`.
 
 ## Documentación
 
