@@ -564,15 +564,15 @@ function normalizeJobOpsAiExperienceRequested_(value) {
 
   const folded = foldJobOpsText_(text);
   if (
-    /\b(?:hace\s+\d+\s+dias?|recien publicado|posted\s+\d+\s+days?\s+ago|today|hoy)\b/u.test(
-      folded,
-    )
+    /\b(?:hace\s+\d+\s+dias?|recien publicado|posted\s+\d+\s+days?\s+ago|today|hoy)\b/u.test(folded)
   ) {
     return '';
   }
 
   if (
-    /\b(?:\d+\s*\+?\s*(?:years?|yrs?|anos?)|junior|jr\.?|associate|entry|mid(?:[- ]level)?|senior|sr\.?|lead|staff|principal|manager|director)\b/u.test(folded)
+    /\b(?:\d+\s*\+?\s*(?:years?|yrs?|anos?)|junior|jr\.?|associate|entry|mid(?:[- ]level)?|senior|sr\.?|lead|staff|principal|manager|director)\b/u.test(
+      folded,
+    )
   ) {
     return text;
   }
