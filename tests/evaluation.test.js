@@ -63,7 +63,7 @@ test('editable role, score and CV settings produce an explainable recommendation
 
   assert.equal(result.ROLE_FAMILY, 'DEVOPS_PLATFORM_SRE');
   assert.equal(result.MATCH_SCORE, 12);
-  assert.equal(result.PRIORITY, 'HIGH');
+  assert.equal(result.PRIORITY, 'REVIEW');
   assert.equal(result.RECOMMENDED_CV, 'DEVOPS_PLATFORM');
   assert.equal(result.CV_LINK, 'https://drive.example/devops');
   assert.match(result.STRONG_MATCHES, /Strategic BRIDGE \+4/);
@@ -178,4 +178,32 @@ test('rescoreJobs updates only evaluation fields and retains manual job values',
   assert.equal(row[headers.indexOf('APPLIED_DATE')], '2026-07-15');
   assert.equal(row[headers.indexOf('FOLLOW_UP_DATE')], '2026-07-22');
   assert.equal(row[headers.indexOf('NOTES')], 'Manual note');
+});
+
+
+test('HIGH requires the global high threshold even for direct or bridge roles', () => {
+  const context = loadJobOpsContext();
+  const config = scoringConfig();
+
+  assert.equal(
+    context.getJobOpsPriorityForEvaluation_(10, config, {
+      strategicLevel: 'DIRECT',
+      minimumReviewScore: 8,
+    }),
+    'REVIEW',
+  );
+  assert.equal(
+    context.getJobOpsPriorityForEvaluation_(10, config, {
+      strategicLevel: 'BRIDGE',
+      minimumReviewScore: 9,
+    }),
+    'REVIEW',
+  );
+  assert.equal(
+    context.getJobOpsPriorityForEvaluation_(15, config, {
+      strategicLevel: 'DIRECT',
+      minimumReviewScore: 8,
+    }),
+    'HIGH',
+  );
 });
