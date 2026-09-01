@@ -572,9 +572,7 @@ function normalizeJobOpsAiExperienceRequested_(value) {
   }
 
   if (
-    /\b(?:\d+\s*\+?\s*(?:years?|yrs?|anos?)|junior|jr\.?|associate|entry|mid(?:[- ]level)?|senior|sr\.?|lead|staff|principal|manager|director)\b/u.test(
-      folded,
-    )
+    /\b(?:\d+\s*\+?\s*(?:years?|yrs?|anos?)|junior|jr\.?|associate|entry|mid(?:[- ]level)?|senior|sr\.?|lead|staff|principal|manager|director)\b/u.test(folded)
   ) {
     return text;
   }
