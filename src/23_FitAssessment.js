@@ -112,7 +112,9 @@ function calculateJobOpsFitAssessment_(rawEvidence, existingRiskFlags) {
 
   const specific = getJobOpsLargestSpecificYearsRequirement_(evidence.experienceRequirements);
   if (yearsAlreadyPenalized && specific.years >= 4) {
-    reasons.push(`Experiencia específica alta ya reflejada en MATCH_SCORE: ${specific.requirement}`);
+    reasons.push(
+      `Experiencia específica alta ya reflejada en MATCH_SCORE: ${specific.requirement}`,
+    );
   } else if (specific.years === 4) {
     adjustment -= 3;
     reasons.push(`Experiencia específica alta: ${specific.requirement}`);
@@ -155,7 +157,9 @@ function calculateJobOpsFitAssessment_(rawEvidence, existingRiskFlags) {
   adjustment = Math.max(-15, Math.min(4, adjustment));
 
   if (evidence.hardRequirements.length > 0) {
-    reasons.push(`Requisitos obligatorios detectados (${evidence.hardRequirements.length}); requieren revisión manual.`);
+    reasons.push(
+      `Requisitos obligatorios detectados (${evidence.hardRequirements.length}); requieren revisión manual.`,
+    );
   }
 
   let level = 'UNKNOWN';
