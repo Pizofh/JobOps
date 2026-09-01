@@ -63,7 +63,7 @@ function classifyJobOpsRole_(job, roleFamilies) {
     const semanticDefinition = roleFamilies.find(
       (definition) => definition.roleFamily === semanticRoleFamily,
     );
-    if (semanticDefinition) {
+    if (semanticDefinition && semanticDefinition.strategicLevel !== 'UNRELATED') {
       return {
         roleFamily: semanticDefinition.roleFamily,
         matchedPatterns: [`Semantic:${semanticDefinition.roleFamily}`],
