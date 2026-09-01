@@ -1,4 +1,5 @@
-/* exported setupJobOps, installJobOpsTriggers, ingestJobs, sendDailyDigest, handleStatusEdit, rescoreJobs, dryRunIngestion, validateJobOpsConfiguration */
+/* global ensureJobOpsFitSchema_, runJobOpsFitMigration_ */
+/* exported setupJobOps, installJobOpsTriggers, ingestJobs, sendDailyDigest, handleStatusEdit, rescoreJobs, assessJobFits, dryRunIngestion, validateJobOpsConfiguration */
 
 /**
  * Initializes the Phase 1 Sheets environment and Gmail labels.
@@ -77,6 +78,15 @@ function rescoreJobs() {
 }
 
 /**
+ * Re-assesses existing visible jobs in-place using their original Gmail alerts.
+ *
+ * @returns {Object}
+ */
+function assessJobFits() {
+  return runJobOpsFitMigration_();
+}
+
+/**
  * Executes the complete ingestion path without mutating Gmail or Sheets.
  *
  * @returns {Object}
@@ -113,6 +123,7 @@ function runJobOpsIngestion_(forceDryRun) {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    ensureJobOpsFitSchema_(spreadsheet);
     const schemaErrors = getJobOpsSheetSchemaErrors_(spreadsheet);
     if (schemaErrors.length > 0) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, schemaErrors.join(' '));
@@ -305,6 +316,16 @@ function buildJobOpsEvaluationInputFromRecord_(record, overrides) {
     salary: record.SALARY,
     experienceRequested: record.EXPERIENCE_REQUESTED,
     isRecruiter: record.SOURCE === 'Recruiter' || Boolean(record.RECRUITER_EMAIL),
+    storedFit: normalizeJobOpsSingleLineText_(record.FIT_VERSION)
+      ? {
+          level: record.FIT_LEVEL,
+          adjustment: record.FIT_ADJUSTMENT,
+          reasons: record.FIT_REASONS,
+          provider: record.FIT_PROVIDER,
+          version: record.FIT_VERSION,
+          assessedAt: record.FIT_ASSESSED_AT,
+        }
+      : null,
     ...(overrides || {}),
   };
 }
@@ -356,6 +377,7 @@ function runJobOpsDailyDigest_() {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    ensureJobOpsFitSchema_(spreadsheet);
     const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
     if (!config.DIGEST_ENABLED) {
       return { ok: true, sent: false, reason: 'DIGEST_DISABLED' };
@@ -426,6 +448,7 @@ function runJobOpsRescore_() {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    ensureJobOpsFitSchema_(spreadsheet);
     const schemaErrors = getJobOpsSheetSchemaErrors_(spreadsheet);
     if (schemaErrors.length > 0) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, schemaErrors.join(' '));
