@@ -87,7 +87,10 @@ function calculateJobOpsFitAssessment_(rawEvidence, existingRiskFlags) {
   let adjustment = 0;
 
   const years = evidence.minimumYearsOverall;
-  const yearsAlreadyPenalized = /(?:FOUR_YEARS_REQUIRED|FIVE_YEARS_REQUIRED|SIX_YEARS_REQUIRED|SEVEN_PLUS_YEARS_REQUIRED|FIVE_PLUS_YEARS|SEVEN_PLUS_YEARS)/u.test(riskFlags);
+  const yearsAlreadyPenalized =
+    /(?:FOUR_YEARS_REQUIRED|FIVE_YEARS_REQUIRED|SIX_YEARS_REQUIRED|SEVEN_PLUS_YEARS_REQUIRED|FIVE_PLUS_YEARS|SEVEN_PLUS_YEARS)/u.test(
+      riskFlags,
+    );
   if (yearsAlreadyPenalized && years >= 4) {
     reasons.push(`Experiencia alta ya reflejada en MATCH_SCORE: ${years} año(s)`);
   } else if (years > 0 && years <= 2) {
