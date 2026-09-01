@@ -312,9 +312,12 @@ function buildJobOpsEvaluationInputFromRecord_(record, overrides) {
       .map((item) => item.trim())
       .filter(Boolean),
     location: record.LOCATION,
-    workMode: record.WORK_MODE,
+    workMode:
+      normalizeJobOpsSingleLineText_(record.WORK_MODE).toUpperCase() === 'UNKNOWN'
+        ? detectJobOpsWorkMode_([record.LOCATION, record.POSITION].filter(Boolean).join('\n'))
+        : record.WORK_MODE,
     salary: record.SALARY,
-    experienceRequested: record.EXPERIENCE_REQUESTED,
+    experienceRequested: normalizeJobOpsAiExperienceRequested_(record.EXPERIENCE_REQUESTED),
     isRecruiter: record.SOURCE === 'Recruiter' || Boolean(record.RECRUITER_EMAIL),
     storedFit: normalizeJobOpsSingleLineText_(record.FIT_VERSION)
       ? {
