@@ -114,6 +114,18 @@ function classifyJobOpsRole_(job, roleFamilies) {
     };
   }
 
+  const explicitTarget = getJobOpsExplicitTargetTitleFamily_(job.position, roleFamilies);
+  if (explicitTarget) {
+    return {
+      roleFamily: explicitTarget.roleFamily,
+      matchedPatterns: [`ExplicitTitle:${explicitTarget.roleFamily}`],
+      confidence: 0.8,
+      recommendedCvProfile: explicitTarget.recommendedCvProfile,
+      strategicLevel: explicitTarget.strategicLevel,
+      minimumReviewScore: explicitTarget.minimumReviewScore,
+    };
+  }
+
   const fallback = roleFamilies.find((definition) => definition.roleFamily === 'UNRELATED');
   return {
     roleFamily: fallback ? fallback.roleFamily : 'UNCLASSIFIED',
@@ -123,6 +135,44 @@ function classifyJobOpsRole_(job, roleFamilies) {
     strategicLevel: fallback ? fallback.strategicLevel : 'UNRELATED',
     minimumReviewScore: fallback ? fallback.minimumReviewScore : Number.MAX_SAFE_INTEGER,
   };
+}
+
+/**
+ * Recovers only unmistakable target titles when semantic classification says
+ * UNRELATED and editable literal patterns were too strict for punctuation or
+ * inserted qualifiers.
+ *
+ * @param {*} position
+ * @param {Object[]} roleFamilies
+ * @returns {Object|null}
+ */
+function getJobOpsExplicitTargetTitleFamily_(position, roleFamilies) {
+  const title = foldJobOpsText_(position);
+  let family = '';
+
+  if (/\b(?:devops|devsecops)\b/u.test(title)) {
+    family = 'DEVOPS_CLOUDOPS_JR';
+  } else if (/\b(?:site reliability|sre)\b/u.test(title) || /\bplatform engineer\b/u.test(title)) {
+    family = 'PLATFORM_SRE_ASSOCIATE';
+  } else if (
+    /\bcloud\b/u.test(title) &&
+    /\b(?:engineer|ingeniero|automation|automatizacion|operations|operaciones|infrastructure|infraestructura)\b/u.test(
+      title,
+    )
+  ) {
+    family = 'DEVOPS_CLOUDOPS_JR';
+  }
+
+  if (!family) {
+    return null;
+  }
+
+  return (
+    (Array.isArray(roleFamilies) ? roleFamilies : []).find(
+      (definition) =>
+        definition.roleFamily === family && definition.strategicLevel !== 'UNRELATED',
+    ) || null
+  );
 }
 
 /**
