@@ -476,6 +476,7 @@ function tagJobOpsAiProvider_(job, provider) {
   const token = provider.displayName.replace(/[^A-Za-z0-9]/gu, '') || 'AI';
   return {
     ...job,
+    aiProvider: provider.displayName,
     parserName: job.parserName.replace(/\+Gemini$/u, `+${token}`),
     warnings: job.warnings.map((warning) =>
       warning.replace(/Gemini structured output/gu, `${provider.displayName} structured output`),
