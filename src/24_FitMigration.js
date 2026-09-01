@@ -48,7 +48,9 @@ function runJobOpsFitMigration_() {
     const evaluationContext = createJobOpsEvaluationContext_(spreadsheet, config);
     const sourceDefinitions = readJobOpsSourceDefinitions_(spreadsheet);
     const targets = readJobOpsJobsForRescore_(spreadsheet);
-    const pending = targets.filter((target) => isJobOpsFitMigrationCandidate_(target.record, config));
+    const pending = targets.filter((target) =>
+      isJobOpsFitMigrationCandidate_(target.record, config),
+    );
 
     const groups = groupJobOpsFitTargetsByMessage_(pending).slice(
       0,
