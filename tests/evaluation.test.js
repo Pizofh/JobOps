@@ -180,7 +180,6 @@ test('rescoreJobs updates only evaluation fields and retains manual job values',
   assert.equal(row[headers.indexOf('NOTES')], 'Manual note');
 });
 
-
 test('HIGH requires the global high threshold even for direct or bridge roles', () => {
   const context = loadJobOpsContext();
   const config = scoringConfig();
