@@ -160,7 +160,6 @@ test('fit migration skips LOW and already current assessments', () => {
   );
 });
 
-
 test('hard requirements alone stay UNKNOWN instead of pretending candidate fit is known', () => {
   const context = loadJobOpsContext();
   const fit = context.calculateJobOpsFitAssessment_(
