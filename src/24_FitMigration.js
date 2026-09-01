@@ -125,9 +125,7 @@ function isJobOpsFitMigrationCandidate_(record, config) {
   const score = Number(record.MATCH_SCORE) || 0;
   const optionalThreshold = Number(config && config.OPTIONAL_THRESHOLD);
   const lowCanBeRecovered =
-    priority === 'LOW' &&
-    Number.isFinite(optionalThreshold) &&
-    score >= optionalThreshold - 4;
+    priority === 'LOW' && Number.isFinite(optionalThreshold) && score >= optionalThreshold - 4;
   return (
     (['HIGH', 'REVIEW', 'OPTIONAL'].includes(priority) || lowCanBeRecovered) &&
     !['REJECTED', 'GHOSTED', 'SKIPPED'].includes(status) &&
