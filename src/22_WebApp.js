@@ -1,6 +1,7 @@
 /* global HtmlService, JOBOPS_APPLICATION_STATUSES, JOBOPS_ERROR_CODES, JOBOPS_SHEET_HEADERS */
 /* global JOBOPS_SHEET_NAMES, LockService, addJobOpsBusinessDays_, assertValidJobOpsScriptProperties_ */
 /* global createJobOpsError_, normalizeAndValidateJobOpsConfig_, normalizeJobOpsSingleLineText_ */
+/* global normalizeJobOpsAiExperienceRequested_ */
 /* global runJobOpsIngestion_, runJobOpsFitMigration_, ensureJobOpsFitSchema_ */
 /* global openConfiguredJobOpsSpreadsheet_, readJobOpsConfig_, readJobOpsJobsForRescore_ */
 /* global readJobOpsScriptProperties_ */
