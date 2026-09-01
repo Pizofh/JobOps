@@ -53,7 +53,7 @@ test('fit assessment does not double penalize seniority already captured by base
   );
 
   assert.equal(fit.adjustment, 0);
-  assert.equal(fit.level, 'GOOD');
+  assert.equal(fit.level, 'STRETCH');
 });
 
 test('fit application keeps transparent match score and derives final score separately', () => {
@@ -146,7 +146,7 @@ test('fit migration skips LOW and already current assessments', () => {
     context.isJobOpsFitMigrationCandidate_({
       PRIORITY: 'HIGH',
       STATUS: 'NEW',
-      FIT_VERSION: '1.0.0',
+      FIT_VERSION: '1.1.0',
     }),
     false,
   );
@@ -157,5 +157,59 @@ test('fit migration skips LOW and already current assessments', () => {
       FIT_VERSION: '',
     }),
     true,
+  );
+});
+
+
+test('hard requirements alone stay UNKNOWN instead of pretending candidate fit is known', () => {
+  const context = loadJobOpsContext();
+  const fit = context.calculateJobOpsFitAssessment_(
+    {
+      seniorityLevel: 'UNKNOWN',
+      minimumYearsOverall: 0,
+      experienceRequirements: [],
+      hardRequirements: ['AWS certification required'],
+    },
+    '',
+  );
+
+  assert.equal(fit.adjustment, 0);
+  assert.equal(fit.level, 'UNKNOWN');
+  assert.ok(fit.reasons.some((reason) => reason.includes('revisión manual')));
+});
+
+test('fit assessment does not subtract years twice when base scoring already captured them', () => {
+  const context = loadJobOpsContext();
+  const fit = context.calculateJobOpsFitAssessment_(
+    {
+      seniorityLevel: 'UNKNOWN',
+      minimumYearsOverall: 5,
+      experienceRequirements: ['Terraform: 5 years'],
+      hardRequirements: [],
+    },
+    'FIVE_YEARS_REQUIRED -5',
+  );
+
+  assert.equal(fit.adjustment, 0);
+  assert.equal(fit.level, 'STRETCH');
+});
+
+test('fit migration can recover LOW jobs within the maximum positive fit adjustment', () => {
+  const context = loadJobOpsContext();
+  const config = { OPTIONAL_THRESHOLD: 6 };
+
+  assert.equal(
+    context.isJobOpsFitMigrationCandidate_(
+      { PRIORITY: 'LOW', STATUS: 'NEW', FIT_VERSION: '', MATCH_SCORE: 3 },
+      config,
+    ),
+    true,
+  );
+  assert.equal(
+    context.isJobOpsFitMigrationCandidate_(
+      { PRIORITY: 'LOW', STATUS: 'NEW', FIT_VERSION: '', MATCH_SCORE: 1 },
+      config,
+    ),
+    false,
   );
 });
