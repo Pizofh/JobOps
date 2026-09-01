@@ -4,7 +4,7 @@
  * Version marker for deterministic fit logic. Bump when rules change so stored
  * rows can be re-evaluated without deleting or re-ingesting Jobs.
  */
-const JOBOPS_FIT_VERSION = '1.0.0';
+const JOBOPS_FIT_VERSION = '1.1.0';
 const JOBOPS_FIT_LEVELS = Object.freeze(['STRONG', 'GOOD', 'STRETCH', 'POOR', 'UNKNOWN']);
 
 /**
@@ -87,7 +87,10 @@ function calculateJobOpsFitAssessment_(rawEvidence, existingRiskFlags) {
   let adjustment = 0;
 
   const years = evidence.minimumYearsOverall;
-  if (years > 0 && years <= 2) {
+  const yearsAlreadyPenalized = /(?:FOUR_YEARS_REQUIRED|FIVE_YEARS_REQUIRED|SIX_YEARS_REQUIRED|SEVEN_PLUS_YEARS_REQUIRED|FIVE_PLUS_YEARS|SEVEN_PLUS_YEARS)/u.test(riskFlags);
+  if (yearsAlreadyPenalized && years >= 4) {
+    reasons.push(`Experiencia alta ya reflejada en MATCH_SCORE: ${years} año(s)`);
+  } else if (years > 0 && years <= 2) {
     adjustment += 2;
     reasons.push(`Experiencia general accesible: ${years} año(s)`);
   } else if (years === 3) {
@@ -105,7 +108,9 @@ function calculateJobOpsFitAssessment_(rawEvidence, existingRiskFlags) {
   }
 
   const specific = getJobOpsLargestSpecificYearsRequirement_(evidence.experienceRequirements);
-  if (specific.years === 4) {
+  if (yearsAlreadyPenalized && specific.years >= 4) {
+    reasons.push(`Experiencia específica alta ya reflejada en MATCH_SCORE: ${specific.requirement}`);
+  } else if (specific.years === 4) {
     adjustment -= 3;
     reasons.push(`Experiencia específica alta: ${specific.requirement}`);
   } else if (specific.years === 5) {
@@ -146,16 +151,23 @@ function calculateJobOpsFitAssessment_(rawEvidence, existingRiskFlags) {
   // remain the base score and cannot be completely replaced by one model call.
   adjustment = Math.max(-15, Math.min(4, adjustment));
 
+  if (evidence.hardRequirements.length > 0) {
+    reasons.push(`Requisitos obligatorios detectados (${evidence.hardRequirements.length}); requieren revisión manual.`);
+  }
+
   let level = 'UNKNOWN';
-  const hasEvidence =
-    years > 0 ||
-    specific.years > 0 ||
-    evidence.seniorityLevel !== 'UNKNOWN' ||
-    evidence.hardRequirements.length > 0;
-  if (hasEvidence) {
-    if (adjustment <= -10) {
+  const hasScoringEvidence =
+    years > 0 || specific.years > 0 || evidence.seniorityLevel !== 'UNKNOWN';
+  if (hasScoringEvidence) {
+    const severeYears = Math.max(years, specific.years);
+    const seniority = evidence.seniorityLevel;
+    if (severeYears >= 6 || ['PRINCIPAL', 'DIRECTOR'].includes(seniority) || adjustment <= -10) {
       level = 'POOR';
-    } else if (adjustment <= -4) {
+    } else if (
+      severeYears >= 4 ||
+      ['SENIOR', 'LEAD', 'STAFF', 'MANAGER'].includes(seniority) ||
+      adjustment <= -4
+    ) {
       level = 'STRETCH';
     } else if (adjustment >= 2) {
       level = 'STRONG';
