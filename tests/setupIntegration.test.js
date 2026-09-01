@@ -19,7 +19,7 @@ test('setupJobOps creates a usable environment and preserves manual edits on rer
 
   const jobsSheet = services.spreadsheet.getSheetByName('Jobs');
   const configSheet = services.spreadsheet.getSheetByName('Config');
-  assert.equal(jobsSheet.getLastColumn(), 32);
+  assert.equal(jobsSheet.getLastColumn(), 39);
   assert.equal(jobsSheet.getConditionalFormatRules().length, 8);
   assert.equal(configSheet.getLastRow(), 13);
 
