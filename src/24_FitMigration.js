@@ -48,7 +48,7 @@ function runJobOpsFitMigration_() {
     const evaluationContext = createJobOpsEvaluationContext_(spreadsheet, config);
     const sourceDefinitions = readJobOpsSourceDefinitions_(spreadsheet);
     const targets = readJobOpsJobsForRescore_(spreadsheet);
-    const pending = targets.filter((target) => isJobOpsFitMigrationCandidate_(target.record));
+    const pending = targets.filter((target) => isJobOpsFitMigrationCandidate_(target.record, config));
 
     const groups = groupJobOpsFitTargetsByMessage_(pending).slice(
       0,
@@ -87,12 +87,9 @@ function runJobOpsFitMigration_() {
           assessedJobs += 1;
         }
       } catch {
+        // Do not stamp FIT_VERSION on transient Gmail/AI/parser failures. Leaving
+        // the rows pending allows a later assessJobFits() run to retry them.
         failedMessages += 1;
-        for (const target of group.targets) {
-          Object.assign(target.record, buildJobOpsUnavailableFitRecord_(target.record, config));
-          updates.push(target);
-          assessedJobs += 1;
-        }
       }
     }
 
@@ -116,14 +113,21 @@ function runJobOpsFitMigration_() {
  * already assessed with the current deterministic version.
  *
  * @param {Object<string, *>} record
+ * @param {Object=} config
  * @returns {boolean}
  */
-function isJobOpsFitMigrationCandidate_(record) {
+function isJobOpsFitMigrationCandidate_(record, config) {
   const priority = normalizeJobOpsSingleLineText_(record.PRIORITY).toUpperCase();
   const status = normalizeJobOpsSingleLineText_(record.STATUS).toUpperCase();
   const version = normalizeJobOpsSingleLineText_(record.FIT_VERSION);
+  const score = Number(record.MATCH_SCORE) || 0;
+  const optionalThreshold = Number(config && config.OPTIONAL_THRESHOLD);
+  const lowCanBeRecovered =
+    priority === 'LOW' &&
+    Number.isFinite(optionalThreshold) &&
+    score >= optionalThreshold - 4;
   return (
-    ['HIGH', 'REVIEW', 'OPTIONAL'].includes(priority) &&
+    (['HIGH', 'REVIEW', 'OPTIONAL'].includes(priority) || lowCanBeRecovered) &&
     !['REJECTED', 'GHOSTED', 'SKIPPED'].includes(status) &&
     version !== JOBOPS_FIT_VERSION
   );
