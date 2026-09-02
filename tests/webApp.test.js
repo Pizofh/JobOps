@@ -122,3 +122,31 @@ test('web URL projection rejects non-http links', () => {
     'https://example.com/job',
   );
 });
+
+test('web app includes compact mobile layout and touch-friendly controls', () => {
+  let renderedHtml = '';
+  const output = {
+    setTitle() {
+      return this;
+    },
+    setXFrameOptionsMode() {
+      return this;
+    },
+  };
+  const context = loadJobOpsContext({
+    Utilities: { formatDate: () => '' },
+    HtmlService: {
+      XFrameOptionsMode: { DEFAULT: 'DEFAULT' },
+      createHtmlOutput(html) {
+        renderedHtml = html;
+        return output;
+      },
+    },
+  });
+
+  context.doGet();
+
+  assert.match(renderedHtml, /@media \(max-width: 390px\)/u);
+  assert.match(renderedHtml, /position: sticky/u);
+  assert.match(renderedHtml, /min-height: 44px/u);
+});

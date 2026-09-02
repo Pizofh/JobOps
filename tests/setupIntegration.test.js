@@ -70,3 +70,24 @@ test('setupJobOps upgrades old scoring dropdowns before writing strategy rules',
     ['ANY', 'TITLE', 'REQUIRED', 'PREFERRED', 'NEGATIVE'],
   );
 });
+
+test('setup repairs version cells that Sheets coerced into dates', () => {
+  const services = createFakeGoogleServices();
+  const context = loadJobOpsContext(services.globals);
+  context.setupJobOps();
+
+  const sheet = services.spreadsheet.getSheetByName('Jobs');
+  const headers = sheet.getDataRange().getValues()[0];
+  sheet.getRange(2, headers.indexOf('JOB_ID') + 1).setValues([['job-version-fix']]);
+  sheet
+    .getRange(2, headers.indexOf('PARSER_VERSION') + 1)
+    .setValues([[new Date('2000-01-01T12:00:00Z')]]);
+  sheet
+    .getRange(2, headers.indexOf('FIT_VERSION') + 1)
+    .setValues([[new Date('2000-01-01T12:00:00Z')]]);
+
+  context.setupJobOps();
+
+  assert.equal(sheet.getRange(2, headers.indexOf('PARSER_VERSION') + 1).getValues()[0][0], '1.1.0');
+  assert.equal(sheet.getRange(2, headers.indexOf('FIT_VERSION') + 1).getValues()[0][0], '1.1.0');
+});

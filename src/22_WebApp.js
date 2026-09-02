@@ -458,12 +458,64 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       .grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 680px) {
-      .shell { padding: 16px; }
-      header { align-items: flex-start; flex-direction: column; }
+      body { font-size: 13px; }
+      .shell { padding: 10px; }
+      header {
+        align-items: flex-start; flex-direction: column; gap: 12px; margin-bottom: 14px;
+      }
+      .brand { width: 100%; }
+      .logo { width: 34px; height: 34px; border-radius: 10px; }
+      h1 { font-size: 19px; }
+      .subtitle { font-size: 11px; }
+      .actions { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); }
+      .actions .btn { min-height: 44px; padding: 8px 6px; font-size: 12px; }
+      .stats {
+        grid-template-columns: repeat(3, minmax(86px, 1fr));
+        gap: 7px; margin-bottom: 10px;
+      }
+      .stat { min-height: 64px; padding: 10px; border-radius: 12px; }
+      .stat .n { font-size: 21px; }
+      .stat .l { font-size: 10px; }
+      .toolbar {
+        position: sticky; top: 6px; z-index: 20;
+        grid-template-columns: 1fr; gap: 8px; margin-bottom: 10px; padding: 9px;
+        background: rgba(17,24,39,.96); backdrop-filter: blur(12px);
+      }
+      .tabs {
+        overflow-x: auto; scrollbar-width: none; padding-bottom: 1px;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab { flex: 0 0 auto; min-height: 40px; padding: 8px 11px; }
+      input, select, textarea { min-height: 44px; font-size: 16px; }
+      .grid { gap: 9px; }
+      .card { padding: 12px; border-radius: 14px; }
+      .card-top { gap: 8px; }
+      .title { font-size: 15px; line-height: 1.3; }
+      .company { font-size: 12px; }
+      .meta { margin-top: 5px; gap: 5px 7px; font-size: 10px; }
+      .score { font-size: 24px; line-height: 1; }
+      .badge { padding: 3px 7px; font-size: 10px; }
+      .details {
+        margin: 10px 0; padding: 9px 0;
+        grid-template-columns: 1fr; gap: 5px; font-size: 11px;
+      }
+      .signals { margin-bottom: 9px; gap: 5px; }
+      .signal { font-size: 10px; padding: 4px 6px; }
+      .card-actions { grid-template-columns: repeat(2, 1fr); gap: 7px; }
+      .card-actions .btn { min-height: 44px; font-size: 12px; }
+      .edit { grid-template-columns: 1fr auto; gap: 7px; }
+      .edit textarea { grid-column: 1 / -1; grid-row: 2; min-height: 64px; }
+      .edit .btn { min-height: 44px; }
+      .toast {
+        left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom));
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 390px) {
+      .actions { grid-template-columns: 1fr 1fr; }
+      .actions .primary { grid-column: 1 / -1; }
       .stats { grid-template-columns: repeat(2, 1fr); }
-      .toolbar { grid-template-columns: 1fr; }
-      .tabs { overflow-x: auto; }
-      .edit { grid-template-columns: 1fr; }
       .card-actions { grid-template-columns: 1fr; }
     }
   </style>
