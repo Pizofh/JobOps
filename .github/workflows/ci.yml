@@ -21,12 +21,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Format probe
-        run: |
-          npx prettier --write tests/semanticClassification.test.js tests/setupIntegration.test.js tests/webApp.test.js
-          echo "SEM_B64=$(base64 -w0 tests/semanticClassification.test.js)"
-          echo "SETUP_B64=$(base64 -w0 tests/setupIntegration.test.js)"
-          echo "WEB_B64=$(base64 -w0 tests/webApp.test.js)"
-          exit 1
       - name: Validate
         run: npm run ci
