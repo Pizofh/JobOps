@@ -393,6 +393,56 @@ function formatJobOpsSheet_(sheet, headers) {
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'APPLIED_DATE', 'yyyy-mm-dd');
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'FOLLOW_UP_DATE', 'yyyy-mm-dd');
   setJobOpsColumnFormatIfPresent_(sheet, headers, 'FIT_ASSESSED_AT', 'yyyy-mm-dd hh:mm');
+  setJobOpsColumnFormatIfPresent_(sheet, headers, 'PARSER_VERSION', '@');
+  setJobOpsColumnFormatIfPresent_(sheet, headers, 'FIT_VERSION', '@');
+
+  if (headers.includes('PARSER_VERSION') || headers.includes('FIT_VERSION')) {
+    repairJobOpsVersionColumns_(sheet, headers);
+  }
+}
+
+/**
+ * Repairs only version cells that Sheets already coerced into Date values.
+ * Manual text values and historical version strings are preserved.
+ *
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {string[]} headers
+ * @returns {number}
+ */
+function repairJobOpsVersionColumns_(sheet, headers) {
+  const rowCount = Math.max(sheet.getLastRow() - 1, 0);
+  if (rowCount === 0) {
+    return 0;
+  }
+
+  let repaired = 0;
+  const versions = {
+    PARSER_VERSION: JOBOPS_PARSER_VERSION,
+    FIT_VERSION: JOBOPS_FIT_VERSION,
+  };
+
+  for (const [headerName, currentVersion] of Object.entries(versions)) {
+    const index = headers.indexOf(headerName);
+    if (index === -1) {
+      continue;
+    }
+
+    const range = sheet.getRange(2, index + 1, rowCount, 1);
+    const values = range.getValues();
+    let changed = false;
+    for (const row of values) {
+      if (row[0] instanceof Date) {
+        row[0] = currentVersion;
+        repaired += 1;
+        changed = true;
+      }
+    }
+    if (changed) {
+      range.setValues(values);
+    }
+  }
+
+  return repaired;
 }
 
 /**
