@@ -1,3 +1,4 @@
+/* global JOBOPS_FIT_VERSION, JOBOPS_PARSER_VERSION */
 /**
  * Opens the private spreadsheet configured for JobOps.
  *
