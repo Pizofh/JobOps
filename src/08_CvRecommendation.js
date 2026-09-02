@@ -83,7 +83,7 @@ function evaluateJobOpsJob_(job, context) {
   const evaluation = {
     ROLE_FAMILY: classification.roleFamily,
     MATCH_SCORE: totalScore,
-    PRIORITY: getJobOpsPriorityForEvaluation_(totalScore, context.config, classification),
+    PRIORITY: getJobOpsPriorityForEvaluation_(totalScore, context.config, classification, job),
     RECOMMENDED_CV: recommendation.profile,
     CV_LINK: recommendation.driveUrl,
     STRONG_MATCHES: strongMatches.join('\n'),

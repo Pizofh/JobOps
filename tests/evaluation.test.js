@@ -206,3 +206,28 @@ test('HIGH requires the global high threshold even for direct or bridge roles', 
     'HIGH',
   );
 });
+
+test('direct roles promote to HIGH at 12 and entry-level direct roles at 10', () => {
+  const context = loadJobOpsContext();
+  const config = scoringConfig();
+  const direct = { strategicLevel: 'DIRECT', minimumReviewScore: 8 };
+
+  assert.equal(
+    context.getJobOpsPriorityForEvaluation_(12, config, direct, {
+      position: 'Platform Engineer (Observability)',
+    }),
+    'HIGH',
+  );
+  assert.equal(
+    context.getJobOpsPriorityForEvaluation_(10, config, direct, {
+      position: 'Cloud Site Reliability Engineer Associate',
+    }),
+    'HIGH',
+  );
+  assert.equal(
+    context.getJobOpsPriorityForEvaluation_(10, config, direct, {
+      position: 'DevOps Engineer',
+    }),
+    'REVIEW',
+  );
+});

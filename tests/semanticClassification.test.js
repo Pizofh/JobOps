@@ -144,3 +144,43 @@ test('duplicate semantic reevaluation preserves the semantic family and upgrades
   assert.equal(target.PARSER, 'parseLinkedInJob+GeminiSemantic');
   assert.equal(target.PARSER_VERSION, '1.1.2001');
 });
+
+test('semantic UNRELATED does not suppress an explicit deterministic DevOps title', () => {
+  const context = loadJobOpsContext();
+  const families = context.parseJobOpsRoleFamilies_([
+    [
+      'ROLE_FAMILY',
+      'PATTERNS',
+      'PRIORITY_ORDER',
+      'RECOMMENDED_CV_PROFILE',
+      'MINIMUM_REVIEW_SCORE',
+      'ENABLED',
+      'NOTES',
+      'STRATEGIC_LEVEL',
+    ],
+    [
+      'DEVOPS_CLOUDOPS_JR',
+      'devops engineer,ingeniero devops,cloud engineer',
+      1,
+      'DEVOPS_PLATFORM',
+      8,
+      true,
+      '',
+      'DIRECT',
+    ],
+    ['UNRELATED', '', 99, 'CV_TO_CREATE', 999, true, '', 'UNRELATED'],
+  ]);
+
+  const classification = context.classifyJobOpsRole_(
+    {
+      position: 'DevOps (CI/CD) + Terraform + AWS Engineer - Remote Work',
+      descriptionText: '',
+      requiredTechnologies: ['CI/CD', 'Terraform', 'AWS'],
+      semanticRoleFamily: 'UNRELATED',
+    },
+    families,
+  );
+
+  assert.equal(classification.roleFamily, 'DEVOPS_CLOUDOPS_JR');
+  assert.equal(classification.strategicLevel, 'DIRECT');
+});
