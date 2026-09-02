@@ -122,3 +122,14 @@ test('web URL projection rejects non-http links', () => {
     'https://example.com/job',
   );
 });
+
+
+test('web app includes compact mobile layout and touch-friendly controls', () => {
+  const context = loadJobOpsContext({
+    Utilities: { formatDate: () => '' },
+  });
+
+  assert.match(context.JOBOPS_WEB_APP_HTML, /@media \(max-width: 390px\)/u);
+  assert.match(context.JOBOPS_WEB_APP_HTML, /position: sticky/u);
+  assert.match(context.JOBOPS_WEB_APP_HTML, /min-height: 44px/u);
+});
