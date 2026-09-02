@@ -184,3 +184,35 @@ test('semantic UNRELATED does not suppress an explicit deterministic DevOps titl
   assert.equal(classification.roleFamily, 'DEVOPS_CLOUDOPS_JR');
   assert.equal(classification.strategicLevel, 'DIRECT');
 });
+
+
+test('Spanish site reliability title is recovered as Platform/SRE', () => {
+  const context = loadJobOpsContext();
+  const families = context.parseJobOpsRoleFamilies_([
+    [
+      'ROLE_FAMILY',
+      'PATTERNS',
+      'PRIORITY_ORDER',
+      'RECOMMENDED_CV_PROFILE',
+      'MINIMUM_REVIEW_SCORE',
+      'ENABLED',
+      'NOTES',
+      'STRATEGIC_LEVEL',
+    ],
+    ['PLATFORM_SRE_ASSOCIATE', 'platform engineer,site reliability engineer,sre', 1, 'DEVOPS_PLATFORM', 8, true, '', 'DIRECT'],
+    ['UNRELATED', '', 99, 'CV_TO_CREATE', 999, true, '', 'UNRELATED'],
+  ]);
+
+  const classification = context.classifyJobOpsRole_(
+    {
+      position: 'Ingeniero de Fiabilidad del Sitio',
+      descriptionText: '',
+      requiredTechnologies: [],
+      semanticRoleFamily: 'UNRELATED',
+    },
+    families,
+  );
+
+  assert.equal(classification.roleFamily, 'PLATFORM_SRE_ASSOCIATE');
+  assert.equal(classification.strategicLevel, 'DIRECT');
+});
