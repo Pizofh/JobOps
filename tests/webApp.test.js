@@ -123,7 +123,6 @@ test('web URL projection rejects non-http links', () => {
   );
 });
 
-
 test('web app includes compact mobile layout and touch-friendly controls', () => {
   const context = loadJobOpsContext({
     Utilities: { formatDate: () => '' },
