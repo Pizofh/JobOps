@@ -432,7 +432,13 @@ function repairJobOpsVersionColumns_(sheet, headers) {
     const values = range.getValues();
     let changed = false;
     for (const row of values) {
-      if (row[0] instanceof Date) {
+      const value = row[0];
+      const isDateValue =
+        value &&
+        typeof value === 'object' &&
+        typeof value.getTime === 'function' &&
+        Number.isFinite(Number(value.getTime()));
+      if (isDateValue) {
         row[0] = currentVersion;
         repaired += 1;
         changed = true;
