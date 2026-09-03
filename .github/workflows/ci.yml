@@ -21,11 +21,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Format probe
-        run: |
-          npx prettier --write src/22_WebApp.js tests/webApp.test.js
-          echo "WEBAPP_B64=$(base64 -w0 src/22_WebApp.js)"
-          echo "WEBTEST_B64=$(base64 -w0 tests/webApp.test.js)"
-          exit 1
       - name: Validate
         run: npm run ci
