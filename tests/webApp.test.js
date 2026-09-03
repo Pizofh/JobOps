@@ -150,3 +150,57 @@ test('web app includes compact mobile layout and touch-friendly controls', () =>
   assert.match(renderedHtml, /position: sticky/u);
   assert.match(renderedHtml, /min-height: 44px/u);
 });
+
+
+test('dashboard keeps applied jobs for follow-up and excludes skipped jobs from the review queue', () => {
+  const context = loadJobOpsContext({
+    Utilities: {
+      formatDate(date, _timezone, format) {
+        return format === 'yyyy-MM-dd' ? date.toISOString().slice(0, 10) : date.toISOString();
+      },
+    },
+  });
+
+  const dashboard = context.buildJobOpsWebDashboard_(
+    [
+      makeRecord({ JOB_ID: 'applied', STATUS: 'APPLIED', PRIORITY: 'HIGH' }),
+      makeRecord({ JOB_ID: 'skipped', STATUS: 'SKIPPED', PRIORITY: 'REVIEW' }),
+    ],
+    new Date('2026-09-03T08:00:00-05:00'),
+  );
+
+  assert.equal(dashboard.counts.applied, 1);
+  assert.equal(dashboard.jobs.find((job) => job.jobId === 'applied').active, true);
+  assert.equal(dashboard.jobs.find((job) => job.jobId === 'skipped').archived, true);
+});
+
+test('web save updates local dashboard without forcing a full reload', () => {
+  let renderedHtml = '';
+  const output = {
+    setTitle() {
+      return this;
+    },
+    setXFrameOptionsMode() {
+      return this;
+    },
+  };
+  const context = loadJobOpsContext({
+    Utilities: { formatDate: () => '' },
+    HtmlService: {
+      XFrameOptionsMode: { DEFAULT: 'DEFAULT' },
+      createHtmlOutput(html) {
+        renderedHtml = html;
+        return output;
+      },
+    },
+  });
+
+  context.doGet();
+
+  assert.match(renderedHtml, /function getVisibleJobs\(\)/u);
+  assert.match(renderedHtml, /var result = await callServer\('updateJobOpsWebJob'/u);
+  assert.doesNotMatch(
+    renderedHtml,
+    /updateJobOpsWebJob'[\s\S]{0,500}await loadDashboard\(false\)/u,
+  );
+});
