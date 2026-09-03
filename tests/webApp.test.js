@@ -151,7 +151,6 @@ test('web app includes compact mobile layout and touch-friendly controls', () =>
   assert.match(renderedHtml, /min-height: 44px/u);
 });
 
-
 test('dashboard keeps applied jobs for follow-up and excludes skipped jobs from the review queue', () => {
   const context = loadJobOpsContext({
     Utilities: {
