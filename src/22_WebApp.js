@@ -126,9 +126,7 @@ function updateJobOpsWebJob(input) {
       }
     }
 
-    manualRange.setValues([
-      [plan.status, appliedDate || '', followUpDate || '', plan.notes],
-    ]);
+    manualRange.setValues([[plan.status, appliedDate || '', followUpDate || '', plan.notes]]);
 
     const normalizedFollowUpDate = normalizeJobOpsWebDate_(followUpDate);
     const today = new Date();
