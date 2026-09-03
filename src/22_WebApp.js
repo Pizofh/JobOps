@@ -85,7 +85,6 @@ function updateJobOpsWebJob(input) {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
-    ensureJobOpsFitSchema_(spreadsheet);
     const sheet = spreadsheet.getSheetByName(JOBOPS_SHEET_NAMES.JOBS);
     if (!sheet) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, 'Missing Jobs sheet.');
@@ -97,47 +96,56 @@ function updateJobOpsWebJob(input) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.WEB_APP, 'Job not found.');
     }
 
-    const values = sheet.getRange(2, 1, rowCount, headers.length).getValues();
     const idIndex = headers.indexOf('JOB_ID');
-    const rowOffset = values.findIndex(
-      (row) => normalizeJobOpsSingleLineText_(row[idIndex]) === plan.jobId,
+    const idValues = sheet.getRange(2, idIndex + 1, rowCount, 1).getValues();
+    const rowOffset = idValues.findIndex(
+      (row) => normalizeJobOpsSingleLineText_(row[0]) === plan.jobId,
     );
     if (rowOffset === -1) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.WEB_APP, 'Job not found.');
     }
 
     const rowNumber = rowOffset + 2;
-    const existingRow = values[rowOffset];
-    const statusColumn = headers.indexOf('STATUS') + 1;
-    const notesColumn = headers.indexOf('NOTES') + 1;
-    sheet.getRange(rowNumber, statusColumn).setValue(plan.status);
-    sheet.getRange(rowNumber, notesColumn).setValue(plan.notes);
+    const statusIndex = headers.indexOf('STATUS');
+    const appliedIndex = headers.indexOf('APPLIED_DATE');
+    const followUpIndex = headers.indexOf('FOLLOW_UP_DATE');
+    const notesIndex = headers.indexOf('NOTES');
+    const manualRange = sheet.getRange(rowNumber, statusIndex + 1, 1, notesIndex - statusIndex + 1);
+    const manualValues = manualRange.getValues()[0];
+
+    let appliedDate = manualValues[appliedIndex - statusIndex];
+    let followUpDate = manualValues[followUpIndex - statusIndex];
 
     if (plan.status === 'APPLIED') {
       const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
-      const appliedIndex = headers.indexOf('APPLIED_DATE');
-      const followUpIndex = headers.indexOf('FOLLOW_UP_DATE');
-      const existingApplied = existingRow[appliedIndex];
-      const existingFollowUp = existingRow[followUpIndex];
-      const appliedDate = isJobOpsWebUsableDate_(existingApplied) ? null : new Date();
-      const baseDate = appliedDate || new Date(existingApplied);
-      const followUpDate = isJobOpsWebUsableDate_(existingFollowUp)
-        ? null
-        : addJobOpsBusinessDays_(baseDate, config.FOLLOW_UP_BUSINESS_DAYS);
-
-      if (appliedDate) {
-        sheet.getRange(rowNumber, appliedIndex + 1).setValue(appliedDate);
+      if (!isJobOpsWebUsableDate_(appliedDate)) {
+        appliedDate = new Date();
       }
-      if (followUpDate) {
-        sheet.getRange(rowNumber, followUpIndex + 1).setValue(followUpDate);
+      if (!isJobOpsWebUsableDate_(followUpDate)) {
+        followUpDate = addJobOpsBusinessDays_(appliedDate, config.FOLLOW_UP_BUSINESS_DAYS);
       }
     }
+
+    manualRange.setValues([
+      [plan.status, appliedDate || '', followUpDate || '', plan.notes],
+    ]);
+
+    const normalizedFollowUpDate = normalizeJobOpsWebDate_(followUpDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const followUpDue =
+      Boolean(normalizedFollowUpDate) &&
+      ['APPLIED', 'FOLLOW_UP'].includes(plan.status) &&
+      normalizedFollowUpDate.getTime() <= today.getTime();
 
     return {
       ok: true,
       jobId: plan.jobId,
       status: plan.status,
       notes: plan.notes,
+      appliedDate: formatJobOpsWebDate_(normalizeJobOpsWebDate_(appliedDate)),
+      followUpDate: formatJobOpsWebDate_(normalizedFollowUpDate),
+      followUpDue,
     };
   } finally {
     lock.releaseLock();
