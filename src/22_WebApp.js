@@ -85,7 +85,6 @@ function updateJobOpsWebJob(input) {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
-    ensureJobOpsFitSchema_(spreadsheet);
     const sheet = spreadsheet.getSheetByName(JOBOPS_SHEET_NAMES.JOBS);
     if (!sheet) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.CONFIGURATION, 'Missing Jobs sheet.');
@@ -97,47 +96,54 @@ function updateJobOpsWebJob(input) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.WEB_APP, 'Job not found.');
     }
 
-    const values = sheet.getRange(2, 1, rowCount, headers.length).getValues();
     const idIndex = headers.indexOf('JOB_ID');
-    const rowOffset = values.findIndex(
-      (row) => normalizeJobOpsSingleLineText_(row[idIndex]) === plan.jobId,
+    const idValues = sheet.getRange(2, idIndex + 1, rowCount, 1).getValues();
+    const rowOffset = idValues.findIndex(
+      (row) => normalizeJobOpsSingleLineText_(row[0]) === plan.jobId,
     );
     if (rowOffset === -1) {
       throw createJobOpsError_(JOBOPS_ERROR_CODES.WEB_APP, 'Job not found.');
     }
 
     const rowNumber = rowOffset + 2;
-    const existingRow = values[rowOffset];
-    const statusColumn = headers.indexOf('STATUS') + 1;
-    const notesColumn = headers.indexOf('NOTES') + 1;
-    sheet.getRange(rowNumber, statusColumn).setValue(plan.status);
-    sheet.getRange(rowNumber, notesColumn).setValue(plan.notes);
+    const statusIndex = headers.indexOf('STATUS');
+    const appliedIndex = headers.indexOf('APPLIED_DATE');
+    const followUpIndex = headers.indexOf('FOLLOW_UP_DATE');
+    const notesIndex = headers.indexOf('NOTES');
+    const manualRange = sheet.getRange(rowNumber, statusIndex + 1, 1, notesIndex - statusIndex + 1);
+    const manualValues = manualRange.getValues()[0];
+
+    let appliedDate = manualValues[appliedIndex - statusIndex];
+    let followUpDate = manualValues[followUpIndex - statusIndex];
 
     if (plan.status === 'APPLIED') {
       const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
-      const appliedIndex = headers.indexOf('APPLIED_DATE');
-      const followUpIndex = headers.indexOf('FOLLOW_UP_DATE');
-      const existingApplied = existingRow[appliedIndex];
-      const existingFollowUp = existingRow[followUpIndex];
-      const appliedDate = isJobOpsWebUsableDate_(existingApplied) ? null : new Date();
-      const baseDate = appliedDate || new Date(existingApplied);
-      const followUpDate = isJobOpsWebUsableDate_(existingFollowUp)
-        ? null
-        : addJobOpsBusinessDays_(baseDate, config.FOLLOW_UP_BUSINESS_DAYS);
-
-      if (appliedDate) {
-        sheet.getRange(rowNumber, appliedIndex + 1).setValue(appliedDate);
+      if (!isJobOpsWebUsableDate_(appliedDate)) {
+        appliedDate = new Date();
       }
-      if (followUpDate) {
-        sheet.getRange(rowNumber, followUpIndex + 1).setValue(followUpDate);
+      if (!isJobOpsWebUsableDate_(followUpDate)) {
+        followUpDate = addJobOpsBusinessDays_(appliedDate, config.FOLLOW_UP_BUSINESS_DAYS);
       }
     }
+
+    manualRange.setValues([[plan.status, appliedDate || '', followUpDate || '', plan.notes]]);
+
+    const normalizedFollowUpDate = normalizeJobOpsWebDate_(followUpDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const followUpDue =
+      Boolean(normalizedFollowUpDate) &&
+      ['APPLIED', 'FOLLOW_UP'].includes(plan.status) &&
+      normalizedFollowUpDate.getTime() <= today.getTime();
 
     return {
       ok: true,
       jobId: plan.jobId,
       status: plan.status,
       notes: plan.notes,
+      appliedDate: formatJobOpsWebDate_(normalizeJobOpsWebDate_(appliedDate)),
+      followUpDate: formatJobOpsWebDate_(normalizedFollowUpDate),
+      followUpDue,
     };
   } finally {
     lock.releaseLock();
@@ -592,11 +598,27 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       el.appendChild(n); el.appendChild(l); return el;
     }
 
+    function getVisibleJobs() {
+      return state.payload.jobs.filter(function(job){
+        return matchesView(job) && matchesSearch(job) && (!state.priority || job.priority===state.priority);
+      });
+    }
+
     function renderStats() {
-      var c = state.payload.counts;
+      var jobs = getVisibleJobs();
       var root = document.getElementById('stats'); root.replaceChildren();
-      [['Visibles',c.total],['HIGH',c.high],['REVIEW',c.review],['OPTIONAL',c.optional],
-       ['Sin fit IA',c.pendingFit],['Follow-ups vencidos',c.followUpsDue]].forEach(function(x){
+      var counts = {
+        total: jobs.length,
+        high: jobs.filter(function(job){ return job.priority==='HIGH'; }).length,
+        review: jobs.filter(function(job){ return job.priority==='REVIEW'; }).length,
+        optional: jobs.filter(function(job){ return job.priority==='OPTIONAL'; }).length,
+        applied: jobs.filter(function(job){
+          return ['APPLIED','FOLLOW_UP','SCREENING','TECHNICAL','OFFER'].indexOf(job.status)>=0;
+        }).length,
+        followUpsDue: jobs.filter(function(job){ return job.followUpDue; }).length
+      };
+      [['Visibles',counts.total],['HIGH',counts.high],['REVIEW',counts.review],['OPTIONAL',counts.optional],
+       ['Aplicadas',counts.applied],['Follow-ups vencidos',counts.followUpsDue]].forEach(function(x){
         root.appendChild(stat(x[0], x[1]));
       });
     }
@@ -681,12 +703,32 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       var notes=document.createElement('textarea'); notes.placeholder='Notas'; notes.value=job.notes||'';
       var save=document.createElement('button'); save.className='btn'; save.textContent='Guardar';
       save.addEventListener('click', async function(){
+        var previous = {
+          status: job.status,
+          notes: job.notes,
+          appliedDate: job.appliedDate,
+          followUpDate: job.followUpDate,
+          followUpDue: job.followUpDue,
+          archived: job.archived,
+          active: job.active
+        };
+        var nextStatus = select.value;
+        job.status = nextStatus;
+        job.notes = notes.value;
+        job.archived = ['REJECTED','GHOSTED','SKIPPED'].indexOf(nextStatus) >= 0;
+        job.active = ['NEW','REVIEW','READY','APPLIED','FOLLOW_UP','SCREENING','TECHNICAL','OFFER'].indexOf(nextStatus) >= 0;
         save.disabled=true; save.textContent='Guardando...';
+        render();
         try {
-          await callServer('updateJobOpsWebJob',{jobId:job.jobId,status:select.value,notes:notes.value});
-          showToast('Actualizado');
-          await loadDashboard(false);
+          var result = await callServer('updateJobOpsWebJob',{jobId:job.jobId,status:nextStatus,notes:notes.value});
+          job.appliedDate = result.appliedDate || job.appliedDate;
+          job.followUpDate = result.followUpDate || job.followUpDate;
+          job.followUpDue = Boolean(result.followUpDue);
+          showToast(nextStatus==='SKIPPED' ? 'Archivada' : nextStatus==='APPLIED' ? 'Marcada como aplicada' : 'Actualizado');
+          render();
         } catch(error) {
+          Object.assign(job, previous);
+          render();
           showToast((error && error.message) || 'No se pudo actualizar', true);
         } finally { save.disabled=false; save.textContent='Guardar'; }
       });
@@ -696,9 +738,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
 
     function renderJobs() {
       var root=document.getElementById('jobs'); root.replaceChildren();
-      var jobs=state.payload.jobs.filter(function(job){
-        return matchesView(job) && matchesSearch(job) && (!state.priority || job.priority===state.priority);
-      });
+      var jobs=getVisibleJobs();
       if(!jobs.length){ var empty=document.createElement('div'); empty.className='empty'; empty.textContent='No hay vacantes en esta vista.'; root.appendChild(empty); return; }
       jobs.forEach(function(job){ root.appendChild(renderCard(job)); });
     }
@@ -738,13 +778,13 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       } catch(error){ showToast((error && error.message)||'Falló la ingesta',true); }
       finally { setBusy(false); }
     });
-    document.getElementById('search').addEventListener('input',function(e){state.query=e.target.value;renderJobs();});
-    document.getElementById('priorityFilter').addEventListener('change',function(e){state.priority=e.target.value;renderJobs();});
+    document.getElementById('search').addEventListener('input',function(e){state.query=e.target.value;render();});
+    document.getElementById('priorityFilter').addEventListener('change',function(e){state.priority=e.target.value;render();});
     document.getElementById('tabs').addEventListener('click',function(e){
       var button=e.target.closest('[data-view]'); if(!button)return;
       state.view=button.dataset.view;
       document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('active',x===button);});
-      renderJobs();
+      render();
     });
 
     loadDashboard(true);
