@@ -600,11 +600,27 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       el.appendChild(n); el.appendChild(l); return el;
     }
 
+    function getVisibleJobs() {
+      return state.payload.jobs.filter(function(job){
+        return matchesView(job) && matchesSearch(job) && (!state.priority || job.priority===state.priority);
+      });
+    }
+
     function renderStats() {
-      var c = state.payload.counts;
+      var jobs = getVisibleJobs();
       var root = document.getElementById('stats'); root.replaceChildren();
-      [['Visibles',c.total],['HIGH',c.high],['REVIEW',c.review],['OPTIONAL',c.optional],
-       ['Sin fit IA',c.pendingFit],['Follow-ups vencidos',c.followUpsDue]].forEach(function(x){
+      var counts = {
+        total: jobs.length,
+        high: jobs.filter(function(job){ return job.priority==='HIGH'; }).length,
+        review: jobs.filter(function(job){ return job.priority==='REVIEW'; }).length,
+        optional: jobs.filter(function(job){ return job.priority==='OPTIONAL'; }).length,
+        applied: jobs.filter(function(job){
+          return ['APPLIED','FOLLOW_UP','SCREENING','TECHNICAL','OFFER'].indexOf(job.status)>=0;
+        }).length,
+        followUpsDue: jobs.filter(function(job){ return job.followUpDue; }).length
+      };
+      [['Visibles',counts.total],['HIGH',counts.high],['REVIEW',counts.review],['OPTIONAL',counts.optional],
+       ['Aplicadas',counts.applied],['Follow-ups vencidos',counts.followUpsDue]].forEach(function(x){
         root.appendChild(stat(x[0], x[1]));
       });
     }
@@ -689,12 +705,32 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       var notes=document.createElement('textarea'); notes.placeholder='Notas'; notes.value=job.notes||'';
       var save=document.createElement('button'); save.className='btn'; save.textContent='Guardar';
       save.addEventListener('click', async function(){
+        var previous = {
+          status: job.status,
+          notes: job.notes,
+          appliedDate: job.appliedDate,
+          followUpDate: job.followUpDate,
+          followUpDue: job.followUpDue,
+          archived: job.archived,
+          active: job.active
+        };
+        var nextStatus = select.value;
+        job.status = nextStatus;
+        job.notes = notes.value;
+        job.archived = ['REJECTED','GHOSTED','SKIPPED'].indexOf(nextStatus) >= 0;
+        job.active = ['NEW','REVIEW','READY','APPLIED','FOLLOW_UP','SCREENING','TECHNICAL','OFFER'].indexOf(nextStatus) >= 0;
         save.disabled=true; save.textContent='Guardando...';
+        render();
         try {
-          await callServer('updateJobOpsWebJob',{jobId:job.jobId,status:select.value,notes:notes.value});
-          showToast('Actualizado');
-          await loadDashboard(false);
+          var result = await callServer('updateJobOpsWebJob',{jobId:job.jobId,status:nextStatus,notes:notes.value});
+          job.appliedDate = result.appliedDate || job.appliedDate;
+          job.followUpDate = result.followUpDate || job.followUpDate;
+          job.followUpDue = Boolean(result.followUpDue);
+          showToast(nextStatus==='SKIPPED' ? 'Archivada' : nextStatus==='APPLIED' ? 'Marcada como aplicada' : 'Actualizado');
+          render();
         } catch(error) {
+          Object.assign(job, previous);
+          render();
           showToast((error && error.message) || 'No se pudo actualizar', true);
         } finally { save.disabled=false; save.textContent='Guardar'; }
       });
@@ -704,9 +740,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
 
     function renderJobs() {
       var root=document.getElementById('jobs'); root.replaceChildren();
-      var jobs=state.payload.jobs.filter(function(job){
-        return matchesView(job) && matchesSearch(job) && (!state.priority || job.priority===state.priority);
-      });
+      var jobs=getVisibleJobs();
       if(!jobs.length){ var empty=document.createElement('div'); empty.className='empty'; empty.textContent='No hay vacantes en esta vista.'; root.appendChild(empty); return; }
       jobs.forEach(function(job){ root.appendChild(renderCard(job)); });
     }
@@ -746,13 +780,13 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       } catch(error){ showToast((error && error.message)||'Falló la ingesta',true); }
       finally { setBusy(false); }
     });
-    document.getElementById('search').addEventListener('input',function(e){state.query=e.target.value;renderJobs();});
-    document.getElementById('priorityFilter').addEventListener('change',function(e){state.priority=e.target.value;renderJobs();});
+    document.getElementById('search').addEventListener('input',function(e){state.query=e.target.value;render();});
+    document.getElementById('priorityFilter').addEventListener('change',function(e){state.priority=e.target.value;render();});
     document.getElementById('tabs').addEventListener('click',function(e){
       var button=e.target.closest('[data-view]'); if(!button)return;
       state.view=button.dataset.view;
       document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('active',x===button);});
-      renderJobs();
+      render();
     });
 
     loadDashboard(true);
