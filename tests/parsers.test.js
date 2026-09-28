@@ -14,6 +14,16 @@ function defaultSources(context) {
     ['SOURCE', 'SENDER_DOMAINS', 'SUBJECT_PATTERNS', 'PARSER_NAME', 'ENABLED'],
     ['LinkedIn', 'linkedin.com', 'job alert,jobs for you', 'parseLinkedInJob', true],
     ['Indeed', 'indeed.com', 'job alert,new jobs', 'parseIndeedJob', true],
+    ['Handshake', 'joinhandshake.com', 'job alert,jobs for you', 'parseGenericJob', true],
+    ['ZipRecruiter', 'ziprecruiter.com', 'job alert,great match', 'parseGenericJob', true],
+    [
+      'Google Jobs',
+      'googlealerts-noreply@google.com',
+      'google alert,job alert',
+      'parseGenericJob',
+      true,
+    ],
+    ['Wonderin', 'wonderin.ai', 'job match,best-fit jobs', 'parseGenericJob', true],
     [
       'Recruiter',
       '',
@@ -91,6 +101,51 @@ test('recruiter detection rejects promotional newsletters despite technical keyw
       subject: 'Newsletter: DevOps role and course promotion',
       from: 'Marketing <news@learning.example>',
       plainBody: 'This webinar promotion includes a Docker opportunity overview.',
+      htmlBody: '',
+    },
+    defaultSources(context),
+  );
+
+  assert.equal(detection.candidate, false);
+});
+
+test('new Gmail alert sources use their configured platform identity', () => {
+  const context = loadJobOpsContext();
+  const cases = [
+    ['Handshake', 'Handshake <alerts@mail.joinhandshake.com>', 'Jobs for you'],
+    ['ZipRecruiter', 'Phil <phil@ziprecruiter.com>', 'You are a great match'],
+    [
+      'Google Jobs',
+      'Google Alerts <googlealerts-noreply@google.com>',
+      'Google Alert - DevOps jobs',
+    ],
+    ['Wonderin', 'Wonderin <jobs@wonderin.ai>', 'Your best-fit jobs'],
+  ];
+
+  for (const [source, from, subject] of cases) {
+    const detection = context.detectJobOpsSource_(
+      {
+        subject,
+        from,
+        plainBody: 'DevOps Engineer at Example Corp https://jobs.example.test/jobs/role-1234',
+        htmlBody: '',
+      },
+      defaultSources(context),
+    );
+
+    assert.equal(detection.candidate, true);
+    assert.equal(detection.source, source);
+    assert.equal(detection.parserName, 'parseGenericJob');
+  }
+});
+
+test('exact sender rules also require a configured subject signal', () => {
+  const context = loadJobOpsContext();
+  const detection = context.detectJobOpsSource_(
+    {
+      subject: 'Google Alert - coffee prices',
+      from: 'Google Alerts <googlealerts-noreply@google.com>',
+      plainBody: 'A general news result with no vacancy.',
       htmlBody: '',
     },
     defaultSources(context),

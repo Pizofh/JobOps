@@ -1,5 +1,6 @@
 {
   "printWidth": 100,
+  "endOfLine": "auto",
   "proseWrap": "preserve",
   "semi": true,
   "singleQuote": true,

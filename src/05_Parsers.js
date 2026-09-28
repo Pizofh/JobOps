@@ -191,13 +191,26 @@ function detectJobOpsSource_(input, sourceDefinitions) {
       continue;
     }
 
-    const senderMatch = definition.senderDomains.some((domain) => {
-      const foldedDomain = foldJobOpsText_(domain).replace(/^@/u, '');
-      return senderDomain === foldedDomain || senderDomain.endsWith(`.${foldedDomain}`);
-    });
+    const senderRules = definition.senderDomains.map(foldJobOpsText_);
+    const exactSenderRules = senderRules.filter((rule) => rule.includes('@'));
+    const domainRules = senderRules
+      .filter((rule) => !rule.includes('@'))
+      .map((rule) => rule.replace(/^@/u, ''));
+    const exactSenderMatch = exactSenderRules.includes(foldedSender);
+    const domainSenderMatch = domainRules.some(
+      (domain) => senderDomain === domain || senderDomain.endsWith(`.${domain}`),
+    );
     const subjectMatch = definition.subjectPatterns.some((pattern) =>
       foldedSubject.includes(foldJobOpsText_(pattern)),
     );
+    const exactSenderHasTechnicalSignal = JOBOPS_TECHNICAL_ROLE_SIGNALS.some((signal) =>
+      containsJobOpsSignal_(foldedContent, signal),
+    );
+    const exactSenderSourceMatch =
+      exactSenderMatch &&
+      exactSenderHasTechnicalSignal &&
+      (definition.subjectPatterns.length === 0 || subjectMatch);
+    const senderMatch = domainSenderMatch || exactSenderSourceMatch;
 
     if (senderMatch || (definition.senderDomains.length === 0 && subjectMatch)) {
       return {

@@ -54,6 +54,10 @@ Centraliza alertas laborales procedentes de:
 - We Work Remotely.
 - ElEmpleo.
 - Computrabajo.
+- Handshake.
+- ZipRecruiter.
+- Google Jobs mediante alertas recibidas en Gmail.
+- Wonderin, limitado a correos de descubrimiento y seguimiento.
 - Correos enviados directamente por reclutadores.
 
 El sistema procesa los mensajes recibidos en Gmail, obtiene los datos disponibles de la vacante, los normaliza, calcula una puntuación, recomienda un CV y guarda el resultado en Google Sheets.
@@ -509,8 +513,25 @@ Fuentes iniciales:
 - We Work Remotely.
 - ElEmpleo.
 - Computrabajo.
+- Handshake.
+- ZipRecruiter.
+- Google Jobs.
+- Wonderin.
 - Recruiter.
 - Generic.
+
+`SENDER_DOMAINS` admite dominios (por ejemplo, `ziprecruiter.com`) y remitentes
+exactos (por ejemplo, `googlealerts-noreply@google.com`). Cuando se configura un
+remitente exacto, el mensaje también debe contener una señal de rol técnico y,
+cuando existan patrones de asunto, uno de ellos debe coincidir. Esto evita
+clasificar como vacante cualquier correo procedente de un dominio amplio como
+`google.com` o una alerta general de noticias.
+
+Estas fuentes se integran exclusivamente mediante correos recibidos en Gmail.
+JobOps no inicia sesión en ellas, no consulta páginas mediante scraping y no usa
+funciones de postulación automática. En particular, Wonderin puede aportar
+notificaciones a la bandeja de entrada, pero JobOps nunca activa `AI Apply` ni le
+entrega CV, respuestas o credenciales.
 
 ## 7.6 `ParsingErrors`
 
