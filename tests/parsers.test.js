@@ -23,7 +23,6 @@ function defaultSources(context) {
       'parseGenericJob',
       true,
     ],
-    ['Wonderin', 'wonderin.ai', 'job match,best-fit jobs', 'parseGenericJob', true],
     [
       'Recruiter',
       '',
@@ -119,7 +118,6 @@ test('new Gmail alert sources use their configured platform identity', () => {
       'Google Alerts <googlealerts-noreply@google.com>',
       'Google Alert - DevOps jobs',
     ],
-    ['Wonderin', 'Wonderin <jobs@wonderin.ai>', 'Your best-fit jobs'],
   ];
 
   for (const [source, from, subject] of cases) {

@@ -1387,15 +1387,6 @@ const JOBOPS_DEFAULT_SOURCE_ROWS = Object.freeze([
     'Remitente exacto para evitar aceptar cualquier correo del dominio google.com.',
   ],
   [
-    'Wonderin',
-    'wonderin.ai',
-    'job match,best-fit jobs,recommended jobs,jobs for you',
-    'parseGenericJob',
-    true,
-    0,
-    'Solo ingesta y seguimiento por Gmail; nunca activa AI Apply ni comparte documentos.',
-  ],
-  [
     'Recruiter',
     '',
     'vacancy,position,opportunity,role,vacante,oportunidad,cargo',

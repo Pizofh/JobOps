@@ -57,7 +57,6 @@ Centraliza alertas laborales procedentes de:
 - Handshake.
 - ZipRecruiter.
 - Google Jobs mediante alertas recibidas en Gmail.
-- Wonderin, limitado a correos de descubrimiento y seguimiento.
 - Correos enviados directamente por reclutadores.
 
 El sistema procesa los mensajes recibidos en Gmail, obtiene los datos disponibles de la vacante, los normaliza, calcula una puntuación, recomienda un CV y guarda el resultado en Google Sheets.
@@ -516,7 +515,6 @@ Fuentes iniciales:
 - Handshake.
 - ZipRecruiter.
 - Google Jobs.
-- Wonderin.
 - Recruiter.
 - Generic.
 
@@ -529,9 +527,7 @@ clasificar como vacante cualquier correo procedente de un dominio amplio como
 
 Estas fuentes se integran exclusivamente mediante correos recibidos en Gmail.
 JobOps no inicia sesión en ellas, no consulta páginas mediante scraping y no usa
-funciones de postulación automática. En particular, Wonderin puede aportar
-notificaciones a la bandeja de entrada, pero JobOps nunca activa `AI Apply` ni le
-entrega CV, respuestas o credenciales.
+funciones de postulación automática.
 
 ## 7.6 `ParsingErrors`
 
