@@ -64,6 +64,7 @@ Para validar la integración, conserva `DRY_RUN = true`, despliega manualmente c
 
 ## Documentación
 
+- [Arquitectura y flujo de datos](docs/ARCHITECTURE.md)
 - [Plan maestro y PRD](docs/PRD.md)
 - [Configuración](docs/SETUP.md)
 - [Operación](docs/OPERATIONS.md)
