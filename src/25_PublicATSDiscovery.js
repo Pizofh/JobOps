@@ -10,12 +10,19 @@
 /* global normalizeJobOpsSingleLineText_, openConfiguredJobOpsSpreadsheet_ */
 /* global readJobOpsConfig_, readJobOpsDeduplicationIndex_, readJobOpsScriptProperties_ */
 /* global registerJobOpsCandidate_ */
-/* exported setupPublicAtsBoards, dryRunPublicAtsDiscovery, ingestPublicAtsJobs */
+/* exported setupPublicAtsBoards, dryRunPublicAtsDiscovery, ingestPublicAtsJobs, dryRunJobDiscovery, ingestDiscoveredJobs */
 
 const JOBOPS_PUBLIC_ATS_SHEET = 'PublicBoards';
 const JOBOPS_PUBLIC_ATS_HEADERS = Object.freeze(['ATS', 'BOARD', 'COMPANY', 'ENABLED']);
 const JOBOPS_PUBLIC_ATS_MAX_BOARDS = 10;
 const JOBOPS_PUBLIC_ATS_MAX_POSTINGS_PER_BOARD = 250;
+const JOBOPS_HIMALAYAS_QUERIES = Object.freeze([
+  'devops',
+  'platform engineer',
+  'cloud engineer',
+  'site reliability',
+  'infrastructure engineer',
+]);
 const JOBOPS_PUBLIC_ATS_TITLE_PATTERN =
   /\b(?:devops|devsecops|platform|sre|site reliability|cloud|infrastructure|infraestructura|linux|sysadmin|systems engineer|system administrator|automation engineer|release engineer|build engineer|production support|application support|backend engineer|backend developer)\b/iu;
 
@@ -44,6 +51,16 @@ function ingestPublicAtsJobs() {
   return runJobOpsPublicAtsDiscovery_(false);
 }
 
+/** Default: discovers jobs from multiple employers with no manual company list. */
+function dryRunJobDiscovery() {
+  return runJobOpsPublicAtsDiscovery_(true);
+}
+
+/** Imports discovered jobs; keeps the separate ATS company list optional. */
+function ingestDiscoveredJobs() {
+  return runJobOpsPublicAtsDiscovery_(false);
+}
+
 /**
  * Uses only provider-documented public GET APIs, with a hard cap of ten boards
  * and no retries on rate limits. Production deployment remains manual.
@@ -61,15 +78,11 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
     ensureJobOpsFitSchema_(spreadsheet);
     const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
     const dryRun = Boolean(forceDryRun || config.DRY_RUN);
+    // PublicBoards is optional. Himalayas discovers companies automatically.
     const boardSheet = spreadsheet.getSheetByName(JOBOPS_PUBLIC_ATS_SHEET);
-    if (!boardSheet) {
-      throw createJobOpsError_(
-        JOBOPS_ERROR_CODES.CONFIGURATION,
-        'Run setupPublicAtsBoards() before discovering public ATS jobs.',
-      );
-    }
-
-    const boards = parseJobOpsPublicAtsBoards_(boardSheet.getDataRange().getValues());
+    const boards = boardSheet
+      ? parseJobOpsPublicAtsBoards_(boardSheet.getDataRange().getValues())
+      : [];
     const context = createJobOpsEvaluationContext_(spreadsheet, config);
     const index = readJobOpsDeduplicationIndex_(spreadsheet);
     const newRecords = [];
@@ -79,53 +92,80 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
     let duplicates = 0;
     let checkedBoards = 0;
 
-    for (const board of boards) {
-      let postings;
+    // Search directly across employers. Country=CO also includes worldwide
+    // remote listings according to the public Himalayas API.
+    const batches = [];
+    let checkedQueries = 0;
+    let stoppedOnRateLimit = false;
+    for (const query of JOBOPS_HIMALAYAS_QUERIES) {
       try {
-        postings = fetchJobOpsPublicAtsPostings_(board);
-        checkedBoards += 1;
+        const jobs = fetchJobOpsHimalayasJobs_(query);
+        checkedQueries += 1;
+        batches.push({ kind: 'HIMALAYAS', postings: jobs });
       } catch (error) {
         errors.push({
-          board: board.company,
-          ats: board.ats,
+          board: 'Himalayas: ' + query,
+          ats: 'HIMALAYAS',
           error: String(error.message).slice(0, 140),
         });
         if (error.rateLimited) {
+          stoppedOnRateLimit = true;
           break;
         }
-        continue;
       }
+    }
 
-      for (const raw of postings.slice(0, JOBOPS_PUBLIC_ATS_MAX_POSTINGS_PER_BOARD)) {
+    // Optional ATS company-specific queries enhance, but never gate discovery.
+    if (!stoppedOnRateLimit) {
+      for (const board of boards) {
+        try {
+          const jobs = fetchJobOpsPublicAtsPostings_(board);
+          checkedBoards += 1;
+          batches.push({ kind: 'ATS', board, postings: jobs });
+        } catch (error) {
+          errors.push({
+            board: board.company,
+            ats: board.ats,
+            error: String(error.message).slice(0, 140),
+          });
+          if (error.rateLimited) {
+            stoppedOnRateLimit = true;
+            break;
+          }
+        }
+      }
+    }
+
+    for (const batch of batches) {
+      for (const raw of batch.postings.slice(0, JOBOPS_PUBLIC_ATS_MAX_POSTINGS_PER_BOARD)) {
         fetchedJobs += 1;
-        const parsed = normalizeJobOpsPublicAtsPosting_(board, raw);
+        const parsed =
+          batch.kind === 'HIMALAYAS'
+            ? normalizeJobOpsHimalayasPosting_(raw)
+            : normalizeJobOpsPublicAtsPosting_(batch.board, raw);
         if (!parsed || !JOBOPS_PUBLIC_ATS_TITLE_PATTERN.test(parsed.position)) {
           continue;
         }
         relevantJobs += 1;
         const input = {
           messageId:
-            'PUBLIC_ATS:' +
-            board.ats +
-            ':' +
-            board.board +
-            ':' +
-            (parsed.sourceJobId || parsed.jobUrl),
+            'PUBLIC_DISCOVERY:' + parsed.source + ':' + (parsed.sourceJobId || parsed.jobUrl),
           threadId: '',
           date: new Date(),
         };
         const record = buildJobOpsJobRecord_(input, parsed, config);
         Object.assign(record, evaluateJobOpsJob_(parsed, context));
-        // ATS records have no Gmail origin. Prevent attempts to retrieve a
-        // fictitious message when assessing historical Gmail-based fit.
         record.GMAIL_MESSAGE_ID = '';
         record.GMAIL_THREAD_ID = '';
-        record.NOTES = 'ATS público: comprobar elegibilidad para trabajar desde Colombia.';
+        record.NOTES =
+          batch.kind === 'HIMALAYAS'
+            ? 'Fuente: Himalayas. Verificar zona horaria, salario y requisitos antes de aplicar.'
+            : 'ATS público: comprobar elegibilidad para trabajar desde Colombia.';
         record.FIT_LEVEL = 'UNKNOWN';
         record.FIT_ADJUSTMENT = 0;
         record.FINAL_SCORE = record.MATCH_SCORE;
         record.FIT_REASONS = 'Requisitos específicos pendientes de revisión manual.';
-        record.FIT_PROVIDER = 'PUBLIC_ATS';
+        record.FIT_PROVIDER = 'PUBLIC_DISCOVERY';
         record.FIT_VERSION = JOBOPS_FIT_VERSION;
         record.FIT_ASSESSED_AT = new Date();
 
@@ -153,6 +193,8 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
       dryRun,
       configuredBoards: boards.length,
       checkedBoards,
+      checkedQueries,
+      stoppedOnRateLimit,
       fetchedJobs,
       relevantJobs,
       duplicates,
@@ -163,6 +205,101 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/** Free public remote-jobs search: multi-employer discovery without login or scraping. */
+function buildJobOpsHimalayasSearchUrl_(query) {
+  if (!JOBOPS_HIMALAYAS_QUERIES.includes(query)) {
+    throw new Error('Unsupported discovery query.');
+  }
+  return (
+    'https://himalayas.app/jobs/api/search?q=' +
+    encodeURIComponent(query) +
+    '&country=CO&sort=recent&page=1'
+  );
+}
+
+/** One request per fixed query, no pagination loops or retries on 429. */
+function fetchJobOpsHimalayasJobs_(query, fetcher) {
+  const fetch = fetcher || ((url, options) => UrlFetchApp.fetch(url, options));
+  const response = fetch(buildJobOpsHimalayasSearchUrl_(query), {
+    method: 'get',
+    headers: { Accept: 'application/json' },
+    muteHttpExceptions: true,
+    followRedirects: false,
+  });
+  const status = response.getResponseCode();
+  if (status === 429) {
+    const error = new Error('Himalayas HTTP 429. Discovery stopped.');
+    error.rateLimited = true;
+    throw error;
+  }
+  if (status !== 200) {
+    throw new Error('Himalayas returned HTTP ' + status);
+  }
+  const payload = JSON.parse(response.getContentText());
+  if (!payload || !Array.isArray(payload.jobs)) {
+    throw new Error('Unexpected Himalayas response format.');
+  }
+  return payload.jobs;
+}
+
+/** Keeps Himalayas attribution and its original applicationLink intact. */
+function normalizeJobOpsHimalayasPosting_(posting) {
+  if (!posting || !posting.guid) {
+    return null;
+  }
+  const position = normalizeJobOpsSingleLineText_(posting.title);
+  const company = normalizeJobOpsSingleLineText_(posting.companyName);
+  const url = canonicalizeJobOpsUrl_(posting.applicationLink);
+  if (!position || !company || !/^https:\/\//iu.test(url)) {
+    return null;
+  }
+
+  if (posting.expiryDate && Number(posting.expiryDate) <= Date.now() / 1000) {
+    return null;
+  }
+  const restrictions = Array.isArray(posting.locationRestrictions)
+    ? posting.locationRestrictions.map(normalizeJobOpsSingleLineText_).filter(Boolean)
+    : [];
+  const description = jobOpsHtmlToText_(posting.description || posting.excerpt || '').slice(
+    0,
+    20000,
+  );
+  const currency = normalizeJobOpsSingleLineText_(posting.currency);
+  const salaryPeriod = normalizeJobOpsSingleLineText_(posting.salaryPeriod || 'annual');
+  const minimum = Number(posting.minSalary);
+  const maximum = Number(posting.maxSalary);
+  const salaryParts = [];
+  if (currency && Number.isFinite(minimum) && minimum > 0) {
+    salaryParts.push(minimum);
+  }
+  if (currency && Number.isFinite(maximum) && maximum > 0 && maximum !== minimum) {
+    salaryParts.push(maximum);
+  }
+
+  return {
+    detection: { isRecruiter: false },
+    source: 'Himalayas',
+    sourceJobId: normalizeJobOpsSingleLineText_(posting.guid),
+    company,
+    position,
+    location: restrictions.length ? 'Remote: ' + restrictions.join(', ') : 'Remote: Worldwide',
+    workMode: 'REMOTE',
+    jobUrl: url,
+    salary: salaryParts.length
+      ? currency + ' ' + salaryParts.join(' - ') + ' / ' + salaryPeriod
+      : '',
+    experienceRequested:
+      normalizeJobOpsSingleLineText_(posting.seniority) || extractJobOpsExperience_(description),
+    requiredTechnologies: extractJobOpsTechnologies_(position + '\n' + description),
+    descriptionText: description,
+    recruiterName: '',
+    recruiterEmail: '',
+    parserName: 'parseHimalayas',
+    parserVersion: JOBOPS_PARSER_VERSION,
+    warnings: [],
+  };
 }
 
 /** Validates user-editable boards; never accepts arbitrary URLs or hostnames. */

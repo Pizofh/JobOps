@@ -30,6 +30,11 @@ function installJobOpsTriggers() {
     ScriptApp.newTrigger('ingestJobs').timeBased().everyHours(1).create();
     created.push('ingestJobs');
   }
+  // Public API search runs daily; no user-supplied company list required.
+  if (!handlers.has('ingestDiscoveredJobs')) {
+    ScriptApp.newTrigger('ingestDiscoveredJobs').timeBased().everyDays(1).atHour(7).create();
+    created.push('ingestDiscoveredJobs');
+  }
   if (!handlers.has('sendDailyDigest')) {
     ScriptApp.newTrigger('sendDailyDigest')
       .timeBased()
