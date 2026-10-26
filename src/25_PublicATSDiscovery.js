@@ -263,7 +263,7 @@ function normalizeJobOpsPublicAtsPosting_(board, posting) {
     workMode = 'REMOTE';
   }
   const salaryRange = lever ? posting.salaryRange : null;
-  const rangeText = salaryRange && salaryRange.min != null && salaryRange.max != null
+  const rangeText = salaryRange && salaryRange.min !== null && salaryRange.min !== undefined && salaryRange.max !== null && salaryRange.max !== undefined
     ? [salaryRange.currency, salaryRange.min, '-', salaryRange.max, salaryRange.interval].join(' ')
     : '';
   const compensation = posting.compensation || {};
