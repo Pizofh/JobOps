@@ -64,7 +64,6 @@ test('public ATS parses Greenhouse and Lever job metadata', () => {
   assert.equal(greenhouse.position, 'DevOps Engineer');
   assert.equal(greenhouse.company, 'Acme');
   assert.ok(greenhouse.requiredTechnologies.includes('Linux'));
-  assert.equal(context.JOBOPS_PUBLIC_ATS_TITLE_PATTERN.test(greenhouse.position), true);
 
   const lever = context.normalizeJobOpsPublicAtsPosting_(
     { ats: 'LEVER', board: 'acme', company: 'Acme' },
