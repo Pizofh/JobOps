@@ -80,29 +80,32 @@ test('public ATS parses Greenhouse and Lever job metadata', () => {
   assert.equal(lever.jobUrl, 'https://jobs.lever.co/acme/abc123');
 });
 
-
 test('automatic discovery works without any company board configuration', () => {
   const context = loadJobOpsContext();
-  assert.equal(context.buildJobOpsHimalayasSearchUrl_('devops'),
-    'https://himalayas.app/jobs/api/search?q=devops&country=CO&sort=recent&page=1');
+  assert.equal(
+    context.buildJobOpsHimalayasSearchUrl_('devops'),
+    'https://himalayas.app/jobs/api/search?q=devops&country=CO&sort=recent&page=1',
+  );
   assert.throws(() => context.buildJobOpsHimalayasSearchUrl_('random-injected-query'));
 
-  const responses = [{
-    guid: 'https://himalayas.app/companies/example/jobs/devops-engineer',
-    title: 'DevOps Engineer',
-    companyName: 'Example Cloud',
-    applicationLink: 'https://himalayas.app/companies/example/jobs/devops-engineer',
-    description: '<p>Linux Docker Terraform</p>',
-    locationRestrictions: ['Colombia', 'Mexico'],
-    expiryDate: 2090000000,
-    currency: 'USD',
-    minSalary: 30000,
-    maxSalary: 50000,
-    salaryPeriod: 'annual',
-  }];
+  const responses = [
+    {
+      guid: 'https://himalayas.app/companies/example/jobs/devops-engineer',
+      title: 'DevOps Engineer',
+      companyName: 'Example Cloud',
+      applicationLink: 'https://himalayas.app/companies/example/jobs/devops-engineer',
+      description: '<p>Linux Docker Terraform</p>',
+      locationRestrictions: ['Colombia', 'Mexico'],
+      expiryDate: 2090000000,
+      currency: 'USD',
+      minSalary: 30000,
+      maxSalary: 50000,
+      salaryPeriod: 'annual',
+    },
+  ];
   const parsed = context.fetchJobOpsHimalayasJobs_('devops', () => ({
     getResponseCode: () => 200,
-    getContentText: () => JSON.stringify({jobs: responses}),
+    getContentText: () => JSON.stringify({ jobs: responses }),
   }));
   assert.equal(parsed.length, 1);
   const job = context.normalizeJobOpsHimalayasPosting_(parsed[0]);
@@ -118,10 +121,14 @@ test('automatic discovery works without any company board configuration', () => 
 test('automatic discovery refuses rate-limited calls and invalid records', () => {
   const context = loadJobOpsContext();
   let calls = 0;
-  assert.throws(() => context.fetchJobOpsHimalayasJobs_('cloud engineer', () => {
-    calls++;
-    return {getResponseCode: () => 429};
-  }), /HTTP 429/u);
+  assert.throws(
+    () =>
+      context.fetchJobOpsHimalayasJobs_('cloud engineer', () => {
+        calls++;
+        return { getResponseCode: () => 429 };
+      }),
+    /HTTP 429/u,
+  );
   assert.equal(calls, 1);
-  assert.equal(context.normalizeJobOpsHimalayasPosting_({title: 'Cloud Engineer'}), null);
+  assert.equal(context.normalizeJobOpsHimalayasPosting_({ title: 'Cloud Engineer' }), null);
 });

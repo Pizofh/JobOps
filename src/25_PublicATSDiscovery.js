@@ -149,10 +149,7 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
         relevantJobs += 1;
         const input = {
           messageId:
-            'PUBLIC_DISCOVERY:' +
-            parsed.source +
-            ':' +
-            (parsed.sourceJobId || parsed.jobUrl),
+            'PUBLIC_DISCOVERY:' + parsed.source + ':' + (parsed.sourceJobId || parsed.jobUrl),
           threadId: '',
           date: new Date(),
         };
@@ -290,9 +287,11 @@ function normalizeJobOpsHimalayasPosting_(posting) {
     location: restrictions.length ? 'Remote: ' + restrictions.join(', ') : 'Remote: Worldwide',
     workMode: 'REMOTE',
     jobUrl: url,
-    salary: salaryParts.length ? currency + ' ' + salaryParts.join(' - ') + ' / ' + salaryPeriod : '',
-    experienceRequested: normalizeJobOpsSingleLineText_(posting.seniority) ||
-      extractJobOpsExperience_(description),
+    salary: salaryParts.length
+      ? currency + ' ' + salaryParts.join(' - ') + ' / ' + salaryPeriod
+      : '',
+    experienceRequested:
+      normalizeJobOpsSingleLineText_(posting.seniority) || extractJobOpsExperience_(description),
     requiredTechnologies: extractJobOpsTechnologies_(position + '\n' + description),
     descriptionText: description,
     recruiterName: '',
