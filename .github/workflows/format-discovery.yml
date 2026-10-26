@@ -25,5 +25,6 @@ jobs:
           git add src/25_PublicATSDiscovery.js tests/publicAtsDiscovery.test.js
           if ! git diff --cached --quiet; then
             git commit -m "style: format automatic discovery"
+            git pull --rebase origin feat/automatic-job-discovery
             git push
           fi
