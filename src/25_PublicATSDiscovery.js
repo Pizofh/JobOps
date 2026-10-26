@@ -85,7 +85,11 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
         postings = fetchJobOpsPublicAtsPostings_(board);
         checkedBoards += 1;
       } catch (error) {
-        errors.push({ board: board.company, ats: board.ats, error: String(error.message).slice(0, 140) });
+        errors.push({
+          board: board.company,
+          ats: board.ats,
+          error: String(error.message).slice(0, 140),
+        });
         if (error.rateLimited) {
           break;
         }
@@ -100,7 +104,13 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
         }
         relevantJobs += 1;
         const input = {
-          messageId: 'PUBLIC_ATS:' + board.ats + ':' + board.board + ':' + (parsed.sourceJobId || parsed.jobUrl),
+          messageId:
+            'PUBLIC_ATS:' +
+            board.ats +
+            ':' +
+            board.board +
+            ':' +
+            (parsed.sourceJobId || parsed.jobUrl),
           threadId: '',
           date: new Date(),
         };
@@ -166,9 +176,11 @@ function parseJobOpsPublicAtsBoards_(values) {
     const ats = normalizeJobOpsSingleLineText_(row[indexes.ATS]).toUpperCase();
     const board = normalizeJobOpsSingleLineText_(row[indexes.BOARD]);
     const company = normalizeJobOpsSingleLineText_(row[indexes.COMPANY]);
-    if (!['GREENHOUSE', 'LEVER', 'LEVER_EU', 'ASHBY'].includes(ats) ||
-        !/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/u.test(board) ||
-        !company) {
+    if (
+      !['GREENHOUSE', 'LEVER', 'LEVER_EU', 'ASHBY'].includes(ats) ||
+      !/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/u.test(board) ||
+      !company
+    ) {
       throw createJobOpsError_(
         JOBOPS_ERROR_CODES.CONFIGURATION,
         'PublicBoards has an enabled row with an invalid ATS, board slug or company.',
@@ -263,9 +275,16 @@ function normalizeJobOpsPublicAtsPosting_(board, posting) {
     workMode = 'REMOTE';
   }
   const salaryRange = lever ? posting.salaryRange : null;
-  const rangeText = salaryRange && salaryRange.min !== null && salaryRange.min !== undefined && salaryRange.max !== null && salaryRange.max !== undefined
-    ? [salaryRange.currency, salaryRange.min, '-', salaryRange.max, salaryRange.interval].join(' ')
-    : '';
+  const rangeText =
+    salaryRange &&
+    salaryRange.min !== null &&
+    salaryRange.min !== undefined &&
+    salaryRange.max !== null &&
+    salaryRange.max !== undefined
+      ? [salaryRange.currency, salaryRange.min, '-', salaryRange.max, salaryRange.interval].join(
+          ' ',
+        )
+      : '';
   const compensation = posting.compensation || {};
   const salary = normalizeJobOpsSingleLineText_(
     greenhouse
@@ -273,7 +292,8 @@ function normalizeJobOpsPublicAtsPosting_(board, posting) {
       : lever
         ? rangeText || extractJobOpsSalary_(description)
         : compensation.scrapeableCompensationSalarySummary ||
-          compensation.compensationTierSummary || extractJobOpsSalary_(description),
+          compensation.compensationTierSummary ||
+          extractJobOpsSalary_(description),
   );
   return {
     detection: { isRecruiter: false },
