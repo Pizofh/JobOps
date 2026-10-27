@@ -9,8 +9,9 @@
 /* global jobOpsHtmlToText_, normalizeAndValidateJobOpsConfig_ */
 /* global normalizeJobOpsSingleLineText_, openConfiguredJobOpsSpreadsheet_ */
 /* global readJobOpsConfig_, readJobOpsDeduplicationIndex_, readJobOpsScriptProperties_ */
-/* global registerJobOpsCandidate_ */
-/* exported setupPublicAtsBoards, dryRunPublicAtsDiscovery, ingestPublicAtsJobs, dryRunJobDiscovery, ingestDiscoveredJobs */
+/* global registerJobOpsCandidate_, foldJobOpsText_, getJobOpsPriorityForEvaluation_ */
+/* global readJobOpsJobsForRescore_, JOBOPS_SHEET_HEADERS */
+/* exported setupPublicAtsBoards, dryRunPublicAtsDiscovery, ingestPublicAtsJobs, dryRunJobDiscovery, ingestDiscoveredJobs, dryRunDiscoveredJobPriorityRepair, repairDiscoveredJobPriorities */
 
 const JOBOPS_PUBLIC_ATS_SHEET = 'PublicBoards';
 const JOBOPS_PUBLIC_ATS_HEADERS = Object.freeze(['ATS', 'BOARD', 'COMPANY', 'ENABLED']);
@@ -181,6 +182,10 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
         record.FIT_PROVIDER = 'PUBLIC_DISCOVERY';
         record.FIT_VERSION = JOBOPS_FIT_VERSION;
         record.FIT_ASSESSED_AT = new Date();
+        Object.assign(
+          record,
+          applyJobOpsPublicDiscoveryPriorityGuards_(record, config, context.roleFamilies),
+        );
 
         const candidate = {
           source: parsed.source,
@@ -215,6 +220,166 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
       wouldCreateJobs: dryRun ? newRecords.length : 0,
       errors,
     };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Conservatively limits recommendations for seniority and non-career roles.
+ * MATCH_SCORE remains the transparent keyword affinity score. These guardrails
+ * change the queue priority, not the user's scoring rules or Gmail pipeline.
+ */
+function applyJobOpsPublicDiscoveryPriorityGuards_(record, config, roleFamilies) {
+  const result = { ...record };
+  const title = foldJobOpsText_(result.POSITION);
+  const seniority = foldJobOpsText_(result.EXPERIENCE_REQUESTED);
+  const risks = normalizeJobOpsSingleLineText_(result.RISK_FLAGS).toUpperCase();
+  const reasons = [];
+
+  let suggestedBridgeFamily = '';
+  if (/\bcloud support (?:administrator|engineer|analyst)\b/u.test(title)) {
+    suggestedBridgeFamily = 'CLOUD_SUPPORT_OPERATIONS';
+  } else if (
+    /\b(?:associate )?linux support engineer\b/u.test(title) ||
+    /\binfrastructure (?:ops|operations) engineer\b/u.test(title)
+  ) {
+    suggestedBridgeFamily = 'LINUX_INFRASTRUCTURE';
+  }
+
+  const enabledFamily = suggestedBridgeFamily
+    ? (roleFamilies || []).find(
+        (family) =>
+          family.roleFamily === suggestedBridgeFamily && family.strategicLevel === 'BRIDGE',
+      )
+    : null;
+  if (enabledFamily && result.ROLE_FAMILY !== suggestedBridgeFamily) {
+    result.ROLE_FAMILY = suggestedBridgeFamily;
+    result.PRIORITY = getJobOpsPriorityForEvaluation_(
+      Number(result.MATCH_SCORE) || 0,
+      config,
+      enabledFamily,
+      { position: result.POSITION },
+    );
+    reasons.push('Rol puente corregido por el título: ' + suggestedBridgeFamily);
+  }
+
+  const ranking = { LOW: 0, OPTIONAL: 1, REVIEW: 2, HIGH: 3 };
+  let cap = 'HIGH';
+  const hasSeniority = /\b(?:senior|sr\.?)\b/u.test(title) || /\bsenior\b/u.test(seniority);
+  const highExperience =
+    /\b(?:FIVE_YEARS_REQUIRED|SIX_YEARS_REQUIRED|SEVEN_PLUS_YEARS_REQUIRED)\b/u.test(risks);
+  if (/\b(?:manager|director|principal|staff|founding|architect)\b/u.test(title)) {
+    cap = 'OPTIONAL';
+    reasons.push('Cargo de alta responsabilidad; no es prioritario para la transición.');
+  } else if (/\b(?:internship|intern|trainee|practicante)\b/u.test(title)) {
+    cap = 'OPTIONAL';
+    reasons.push('Pasantía: revisar remuneración y pertinencia antes de aplicar.');
+  } else if (hasSeniority) {
+    cap = highExperience ? 'OPTIONAL' : 'REVIEW';
+    reasons.push('Seniority elevado: comprobar años de experiencia exigidos.');
+  }
+
+  const priority = normalizeJobOpsSingleLineText_(result.PRIORITY).toUpperCase();
+  if (ranking[priority] !== undefined && ranking[priority] > ranking[cap]) {
+    result.PRIORITY = cap;
+  }
+  for (const reason of reasons) {
+    const existing = normalizeJobOpsSingleLineText_(result.FIT_REASONS);
+    if (!existing.includes(reason)) {
+      result.FIT_REASONS = [existing, reason].filter(Boolean).join('\n');
+    }
+  }
+  // UNKNOWN is intentional: no structured requirements assessment was run.
+  return result;
+}
+
+/** Shows proposed changes only for untouched, imported Himalayas vacancies. */
+function dryRunDiscoveredJobPriorityRepair() {
+  return runJobOpsDiscoveredPriorityRepair_(true);
+}
+
+/** Applies only role family, queue priority and explanatory text to NEW jobs. */
+function repairDiscoveredJobPriorities() {
+  return runJobOpsDiscoveredPriorityRepair_(false);
+}
+
+function runJobOpsDiscoveredPriorityRepair_(forceDryRun) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) {
+    throw createJobOpsError_(JOBOPS_ERROR_CODES.INGESTION_LOCK, 'JobOps is already running.');
+  }
+  try {
+    const properties = readJobOpsScriptProperties_();
+    assertValidJobOpsScriptProperties_(properties);
+    const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
+    const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
+    const dryRun = forceDryRun || config.DRY_RUN;
+    const context = createJobOpsEvaluationContext_(spreadsheet, config);
+    const sheet = spreadsheet.getSheetByName(JOBOPS_SHEET_NAMES.JOBS);
+    const headers = JOBOPS_SHEET_HEADERS.Jobs;
+    const fields = ['ROLE_FAMILY', 'PRIORITY', 'FIT_REASONS'];
+    const targets = readJobOpsJobsForRescore_(spreadsheet);
+    const changes = [];
+    let eligible = 0;
+
+    for (const target of targets) {
+      const row = target.record;
+      if (
+        normalizeJobOpsSingleLineText_(row.SOURCE) !== 'Himalayas' ||
+        normalizeJobOpsSingleLineText_(row.PARSER) !== 'parseHimalayas' ||
+        normalizeJobOpsSingleLineText_(row.FIT_PROVIDER) !== 'PUBLIC_DISCOVERY' ||
+        normalizeJobOpsSingleLineText_(row.STATUS) !== 'NEW'
+      ) {
+        continue;
+      }
+      eligible += 1;
+      const corrected = applyJobOpsPublicDiscoveryPriorityGuards_(
+        row,
+        config,
+        context.roleFamilies,
+      );
+      for (const field of fields) {
+        if (String(corrected[field] || '') !== String(row[field] || '')) {
+          changes.push({
+            rowNumber: target.rowNumber,
+            field,
+            oldValue: row[field],
+            newValue: corrected[field],
+          });
+        }
+      }
+    }
+
+    // Single-user Sheet: protect against unexpectedly massive writes.
+    if (!dryRun && changes.length > 300) {
+      throw createJobOpsError_(
+        JOBOPS_ERROR_CODES.CONFIGURATION,
+        'Repair exceeds 300 cells. Review the dry run first.',
+      );
+    }
+    if (!dryRun) {
+      for (const change of changes) {
+        sheet
+          .getRange(change.rowNumber, headers.indexOf(change.field) + 1)
+          .setValue(change.newValue);
+      }
+    }
+    const summary = {
+      ok: true,
+      dryRun,
+      examinedJobs: targets.length,
+      eligibleJobs: eligible,
+      changedCells: changes.length,
+      changedJobs: new Set(changes.map((c) => c.rowNumber)).size,
+      samples: changes.slice(0, 12).map((change) => ({
+        field: change.field,
+        from: String(change.oldValue).slice(0, 80),
+        to: String(change.newValue).slice(0, 80),
+      })),
+    };
+    console.log(JSON.stringify(summary, null, 2));
+    return summary;
   } finally {
     lock.releaseLock();
   }
