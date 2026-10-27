@@ -156,3 +156,40 @@ test('automatic discovery includes bridge roles but rejects unrelated query inpu
   assert.throws(() => context.buildJobOpsHimalayasSearchUrl_('help desk level 1'));
   assert.throws(() => context.buildJobOpsHimalayasSearchUrl_('manual QA tester'));
 });
+
+test('public discovery protects seniority and classifies bridge titles', () => {
+  const ctx = loadJobOpsContext();
+  const config = {HIGH_PRIORITY_THRESHOLD: 15,REVIEW_THRESHOLD:10,OPTIONAL_THRESHOLD:6};
+  const families = [
+    {roleFamily:'CLOUD_SUPPORT_OPERATIONS',strategicLevel:'BRIDGE',minimumReviewScore:9},
+    {roleFamily:'LINUX_INFRASTRUCTURE',strategicLevel:'BRIDGE',minimumReviewScore:9},
+  ];
+  const senior = ctx.applyJobOpsPublicDiscoveryPriorityGuards_({
+    POSITION:'Senior DevOps Engineer',EXPERIENCE_REQUESTED:'Senior',
+    PRIORITY:'HIGH',MATCH_SCORE:46,ROLE_FAMILY:'DEVOPS_CLOUDOPS_JR',RISK_FLAGS:'SENIOR_TITLE -7',
+    FIT_REASONS:'',
+  },config,families);
+  assert.equal(senior.PRIORITY,'REVIEW');
+  assert.equal(senior.MATCH_SCORE,46);
+  const internship = ctx.applyJobOpsPublicDiscoveryPriorityGuards_({
+    POSITION:'DevOps Engineer Internship',EXPERIENCE_REQUESTED:'Entry-level',
+    PRIORITY:'HIGH',MATCH_SCORE:48,ROLE_FAMILY:'DEVOPS_CLOUDOPS_JR',FIT_REASONS:'',
+  },config,families);
+  assert.equal(internship.PRIORITY,'OPTIONAL');
+  const bridge = ctx.applyJobOpsPublicDiscoveryPriorityGuards_({
+    POSITION:'Associate Linux Support Engineer',EXPERIENCE_REQUESTED:'Entry-level',
+    PRIORITY:'LOW',MATCH_SCORE:21,ROLE_FAMILY:'UNRELATED',FIT_REASONS:'',
+  },config,families);
+  assert.equal(bridge.ROLE_FAMILY,'LINUX_INFRASTRUCTURE');
+  assert.equal(bridge.PRIORITY,'HIGH');
+  const cloud = ctx.applyJobOpsPublicDiscoveryPriorityGuards_({
+    POSITION:'Cloud Support Administrator (Remote LATAM)',PRIORITY:'HIGH',
+    MATCH_SCORE:27,ROLE_FAMILY:'RELEASE_CICD_AUTOMATION',FIT_REASONS:'',
+  },config,families);
+  assert.equal(cloud.ROLE_FAMILY,'CLOUD_SUPPORT_OPERATIONS');
+  const stale = ctx.applyJobOpsPublicDiscoveryPriorityGuards_({
+    POSITION:'Senior Cloud Engineer',PRIORITY:'LOW',MATCH_SCORE:3,
+    ROLE_FAMILY:'DEVOPS_CLOUDOPS_JR',FIT_REASONS:'',
+  },config,families);
+  assert.equal(stale.PRIORITY,'LOW');
+});
