@@ -266,11 +266,9 @@ function applyJobOpsPublicDiscoveryPriorityGuards_(record, config, roleFamilies)
 
   const ranking = { LOW: 0, OPTIONAL: 1, REVIEW: 2, HIGH: 3 };
   let cap = 'HIGH';
-  const hasSeniority = /\b(?:senior|sr\.?)\b/u.test(title) ||
-    /\bsenior\b/u.test(seniority);
-  const highExperience = /\b(?:FIVE_YEARS_REQUIRED|SIX_YEARS_REQUIRED|SEVEN_PLUS_YEARS_REQUIRED)\b/u.test(
-    risks,
-  );
+  const hasSeniority = /\b(?:senior|sr\.?)\b/u.test(title) || /\bsenior\b/u.test(seniority);
+  const highExperience =
+    /\b(?:FIVE_YEARS_REQUIRED|SIX_YEARS_REQUIRED|SEVEN_PLUS_YEARS_REQUIRED)\b/u.test(risks);
   if (/\b(?:manager|director|principal|staff|founding|architect)\b/u.test(title)) {
     cap = 'OPTIONAL';
     reasons.push('Cargo de alta responsabilidad; no es prioritario para la transición.');
@@ -337,7 +335,9 @@ function runJobOpsDiscoveredPriorityRepair_(forceDryRun) {
       }
       eligible += 1;
       const corrected = applyJobOpsPublicDiscoveryPriorityGuards_(
-        row, config, context.roleFamilies,
+        row,
+        config,
+        context.roleFamilies,
       );
       for (const field of fields) {
         if (String(corrected[field] || '') !== String(row[field] || '')) {
