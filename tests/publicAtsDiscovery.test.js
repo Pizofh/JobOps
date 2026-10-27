@@ -132,3 +132,27 @@ test('automatic discovery refuses rate-limited calls and invalid records', () =>
   assert.equal(calls, 1);
   assert.equal(context.normalizeJobOpsHimalayasPosting_({ title: 'Cloud Engineer' }), null);
 });
+
+test('automatic discovery includes bridge roles but rejects unrelated query inputs', () => {
+  const context = loadJobOpsContext();
+  const bridgeQueries = [
+    'cloud support engineer',
+    'linux engineer',
+    'release engineer',
+    'ci/cd engineer',
+    'application support',
+    'production support',
+    'systems engineer',
+    'automation engineer',
+    'backend engineer',
+  ];
+
+  for (const query of bridgeQueries) {
+    const url = context.buildJobOpsHimalayasSearchUrl_(query);
+    assert.ok(url.includes('q=' + encodeURIComponent(query)));
+    assert.ok(url.includes('country=CO'));
+  }
+
+  assert.throws(() => context.buildJobOpsHimalayasSearchUrl_('help desk level 1'));
+  assert.throws(() => context.buildJobOpsHimalayasSearchUrl_('manual QA tester'));
+});
