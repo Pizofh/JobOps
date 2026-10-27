@@ -53,7 +53,9 @@ function ingestPublicAtsJobs() {
 
 /** Default: discovers jobs from multiple employers with no manual company list. */
 function dryRunJobDiscovery() {
-  return runJobOpsPublicAtsDiscovery_(true);
+  const result = runJobOpsPublicAtsDiscovery_(true);
+  console.log(JSON.stringify(result, null, 2));
+  return result;
 }
 
 /** Imports discovered jobs; keeps the separate ATS company list optional. */
