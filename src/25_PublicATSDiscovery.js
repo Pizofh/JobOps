@@ -1,4 +1,4 @@
-/* global LockService, PropertiesService, SpreadsheetApp, UrlFetchApp */
+/* global LockService, PropertiesService, SpreadsheetApp, UrlFetchApp, console */
 /* global JOBOPS_ERROR_CODES, JOBOPS_FIT_VERSION, JOBOPS_PARSER_VERSION */
 /* global JOBOPS_SHEET_NAMES, appendJobOpsJobRecords_, assertValidJobOpsScriptProperties_ */
 /* global buildJobOpsJobRecord_, canonicalizeJobOpsUrl_, createJobOpsError_ */
