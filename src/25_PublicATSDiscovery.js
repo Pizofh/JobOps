@@ -17,14 +17,25 @@ const JOBOPS_PUBLIC_ATS_HEADERS = Object.freeze(['ATS', 'BOARD', 'COMPANY', 'ENA
 const JOBOPS_PUBLIC_ATS_MAX_BOARDS = 10;
 const JOBOPS_PUBLIC_ATS_MAX_POSTINGS_PER_BOARD = 250;
 const JOBOPS_HIMALAYAS_QUERIES = Object.freeze([
+  // Roles objetivo: arquitectura, automatización e infraestructura cloud.
   'devops',
   'platform engineer',
   'cloud engineer',
   'site reliability',
   'infrastructure engineer',
+  // Roles puente que aprovechan Linux, troubleshooting, soporte L2/L3 y CI/CD.
+  'cloud support engineer',
+  'linux engineer',
+  'release engineer',
+  'ci/cd engineer',
+  'application support',
+  'production support',
+  'systems engineer',
+  'automation engineer',
+  'backend engineer',
 ]);
 const JOBOPS_PUBLIC_ATS_TITLE_PATTERN =
-  /\b(?:devops|devsecops|platform|sre|site reliability|cloud|infrastructure|infraestructura|linux|sysadmin|systems engineer|system administrator|automation engineer|release engineer|build engineer|production support|application support|backend engineer|backend developer)\b/iu;
+  /\b(?:devops|devsecops|platform|sre|site reliability|cloud|infrastructure|infraestructura|linux|sysadmin|systems engineer|system administrator|automation engineer|release engineer|build engineer|deployment engineer|ci\/cd engineer|technical operations|production support|application support|backend engineer|backend developer)\b/iu;
 
 /**
  * Creates a separate, editable list of public ATS boards. No providers are
