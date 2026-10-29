@@ -206,6 +206,12 @@ function applyJobOpsFitToEvaluation_(
   assessedAt,
 ) {
   const fit = calculateJobOpsFitAssessment_(fitEvidence, evaluation.RISK_FLAGS);
+  if (fitEvidence && fitEvidence.cloudGap && ['STRONG', 'GOOD', 'UNKNOWN'].includes(fit.level)) {
+    fit.level = 'STRETCH';
+  }
+  if (fitEvidence && Array.isArray(fitEvidence.reviewReasons)) {
+    fit.reasons.push(...fitEvidence.reviewReasons);
+  }
   const matchScore = Number(evaluation.MATCH_SCORE) || 0;
   const finalScore = matchScore + fit.adjustment;
 

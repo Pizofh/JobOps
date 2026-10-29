@@ -1,4 +1,5 @@
 /* global applyJobOpsFitToEvaluation_, applyJobOpsStoredFit_, applyJobOpsUnknownFit_ */
+/* global extractJobOpsRequirementEvidence_ */
 /**
  * Converts editable CVProfiles rows to enabled profile definitions.
  *
@@ -105,5 +106,14 @@ function evaluateJobOpsJob_(job, context) {
     return applyJobOpsStoredFit_(evaluation, job.storedFit, context.config, classification);
   }
 
+  if (job.descriptionText || job.position) {
+    return applyJobOpsFitToEvaluation_(
+      evaluation,
+      extractJobOpsRequirementEvidence_(job),
+      context.config,
+      classification,
+      'DETERMINISTIC',
+    );
+  }
   return applyJobOpsUnknownFit_(evaluation, context.config, classification);
 }
