@@ -723,7 +723,6 @@ function updateJobOpsJobEvaluationFields_(spreadsheet, targets) {
   const sheet = getRequiredJobOpsSheet_(spreadsheet, JOBOPS_SHEET_NAMES.JOBS);
   const fieldGroups = [
     ['ROLE_FAMILY', 'MATCH_SCORE', 'PRIORITY'],
-    ['RECOMMENDED_CV', 'CV_LINK'],
     ['STRONG_MATCHES', 'RISK_FLAGS'],
     [
       'FIT_LEVEL',
@@ -738,9 +737,11 @@ function updateJobOpsJobEvaluationFields_(spreadsheet, targets) {
 
   for (const fields of fieldGroups) {
     const firstColumn = getJobOpsColumnNumber_(JOBOPS_SHEET_HEADERS.Jobs, fields[0]);
-    sheet
-      .getRange(2, firstColumn, targets.length, fields.length)
-      .setValues(targets.map((target) => fields.map((field) => target.record[field] ?? '')));
+    for (const target of targets) {
+      sheet
+        .getRange(target.rowNumber, firstColumn, 1, fields.length)
+        .setValues([fields.map((field) => target.record[field] ?? '')]);
+    }
   }
 
   return targets.length;

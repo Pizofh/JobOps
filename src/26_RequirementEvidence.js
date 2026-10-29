@@ -28,7 +28,7 @@ function extractJobOpsRequirementEvidence_(job) {
       minimumYearsOverall = Math.max(minimumYearsOverall || 0, Number(match[1]));
     }
   }
-  const seniority = title.match(
+  const seniority = (title + ' ' + (job.experienceRequested || '')).match(
     /\b(principal|director|manager|staff|lead|senior|junior|associate|entry|mid)\b/iu,
   );
   const mandatory = clauses.filter((s) => required.test(s) && !preferred.test(s));
