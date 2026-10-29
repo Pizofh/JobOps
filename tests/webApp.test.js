@@ -31,7 +31,7 @@ function makeRecord(overrides = {}) {
   };
 }
 
-test('web dashboard excludes LOW jobs and sorts HIGH before REVIEW before OPTIONAL', () => {
+test('web dashboard includes LOW jobs and sorts HIGH before REVIEW before OPTIONAL', () => {
   const context = loadJobOpsContext({
     Utilities: {
       formatDate(date, _timezone, format) {
@@ -53,9 +53,9 @@ test('web dashboard excludes LOW jobs and sorts HIGH before REVIEW before OPTION
 
   assert.deepEqual(
     dashboard.jobs.map((job) => job.jobId),
-    ['high', 'review', 'optional'],
+    ['high', 'review', 'optional', 'low'],
   );
-  assert.equal(dashboard.counts.total, 3);
+  assert.equal(dashboard.counts.total, 4);
   assert.equal(dashboard.counts.high, 1);
   assert.equal(dashboard.counts.review, 1);
   assert.equal(dashboard.counts.optional, 1);

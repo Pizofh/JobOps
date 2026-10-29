@@ -10,6 +10,7 @@
 /* global normalizeJobOpsSingleLineText_, openConfiguredJobOpsSpreadsheet_ */
 /* global readJobOpsConfig_, readJobOpsDeduplicationIndex_, readJobOpsScriptProperties_ */
 /* global registerJobOpsCandidate_ */
+/* global buildJobOpsWebDashboard_ */
 /* exported setupPublicAtsBoards, dryRunPublicAtsDiscovery, ingestPublicAtsJobs, dryRunJobDiscovery, ingestDiscoveredJobs */
 
 const JOBOPS_PUBLIC_ATS_SHEET = 'PublicBoards';
@@ -88,9 +89,11 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
     const properties = readJobOpsScriptProperties_();
     assertValidJobOpsScriptProperties_(properties);
     const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
-    ensureJobOpsFitSchema_(spreadsheet);
     const config = normalizeAndValidateJobOpsConfig_(readJobOpsConfig_(spreadsheet));
     const dryRun = Boolean(forceDryRun || config.DRY_RUN);
+    if (!dryRun) {
+      ensureJobOpsFitSchema_(spreadsheet);
+    }
     // PublicBoards is optional. Himalayas discovers companies automatically.
     const boardSheet = spreadsheet.getSheetByName(JOBOPS_PUBLIC_ATS_SHEET);
     const boards = boardSheet
@@ -174,13 +177,6 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
           batch.kind === 'HIMALAYAS'
             ? 'Fuente: Himalayas. Verificar zona horaria, salario y requisitos antes de aplicar.'
             : 'ATS público: comprobar elegibilidad para trabajar desde Colombia.';
-        record.FIT_LEVEL = 'UNKNOWN';
-        record.FIT_ADJUSTMENT = 0;
-        record.FINAL_SCORE = record.MATCH_SCORE;
-        record.FIT_REASONS = 'Requisitos específicos pendientes de revisión manual.';
-        record.FIT_PROVIDER = 'PUBLIC_DISCOVERY';
-        record.FIT_VERSION = JOBOPS_FIT_VERSION;
-        record.FIT_ASSESSED_AT = new Date();
 
         const candidate = {
           source: parsed.source,
@@ -213,6 +209,7 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
       duplicates,
       createdJobs: dryRun ? 0 : newRecords.length,
       wouldCreateJobs: dryRun ? newRecords.length : 0,
+      preview: buildJobOpsWebDashboard_(newRecords, new Date()).jobs.slice(0, 20),
       errors,
     };
   } finally {
@@ -264,7 +261,7 @@ function normalizeJobOpsHimalayasPosting_(posting) {
   }
   const position = normalizeJobOpsSingleLineText_(posting.title);
   const company = normalizeJobOpsSingleLineText_(posting.companyName);
-  const url = canonicalizeJobOpsUrl_(posting.applicationLink);
+  const url = normalizeJobOpsSingleLineText_(posting.applicationLink);
   if (!position || !company || !/^https:\/\//iu.test(url)) {
     return null;
   }
@@ -273,14 +270,16 @@ function normalizeJobOpsHimalayasPosting_(posting) {
     return null;
   }
   const restrictions = Array.isArray(posting.locationRestrictions)
-    ? posting.locationRestrictions.map(normalizeJobOpsSingleLineText_).filter(Boolean)
+    ? posting.locationRestrictions
+        .map((r) => normalizeJobOpsSingleLineText_(typeof r === 'object' ? r.name || r.alpha2 : r))
+        .filter(Boolean)
     : [];
   const description = jobOpsHtmlToText_(posting.description || posting.excerpt || '').slice(
     0,
     20000,
   );
   const currency = normalizeJobOpsSingleLineText_(posting.currency);
-  const salaryPeriod = normalizeJobOpsSingleLineText_(posting.salaryPeriod || 'annual');
+  const salaryPeriod = normalizeJobOpsSingleLineText_(posting.salaryPeriod || 'UNKNOWN');
   const minimum = Number(posting.minSalary);
   const maximum = Number(posting.maxSalary);
   const salaryParts = [];
@@ -304,7 +303,9 @@ function normalizeJobOpsHimalayasPosting_(posting) {
       ? currency + ' ' + salaryParts.join(' - ') + ' / ' + salaryPeriod
       : '',
     experienceRequested:
-      normalizeJobOpsSingleLineText_(posting.seniority) || extractJobOpsExperience_(description),
+      normalizeJobOpsSingleLineText_(
+        Array.isArray(posting.seniority) ? posting.seniority.join(', ') : posting.seniority,
+      ) || extractJobOpsExperience_(description),
     requiredTechnologies: extractJobOpsTechnologies_(position + '\n' + description),
     descriptionText: description,
     recruiterName: '',

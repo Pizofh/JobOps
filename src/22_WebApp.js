@@ -1,3 +1,5 @@
+/* global readJobOpsRoleFamilies_ */
+/* global buildJobOpsSearchMetrics_ */
 /* global HtmlService, JOBOPS_APPLICATION_STATUSES, JOBOPS_ERROR_CODES, JOBOPS_SHEET_HEADERS */
 /* global JOBOPS_SHEET_NAMES, LockService, addJobOpsBusinessDays_, assertValidJobOpsScriptProperties_ */
 /* global createJobOpsError_, normalizeAndValidateJobOpsConfig_, normalizeJobOpsSingleLineText_ */
@@ -31,7 +33,7 @@ function doGet() {
 }
 
 /**
- * Returns the complete dashboard payload. LOW-priority jobs never leave the server.
+ * Returns the complete dashboard payload. All Jobs rows are included; filters belong to the client.
  *
  * @returns {Object}
  */
@@ -41,8 +43,25 @@ function getJobOpsWebDashboard() {
   const spreadsheet = openConfiguredJobOpsSpreadsheet_(properties.SPREADSHEET_ID);
   ensureJobOpsFitSchema_(spreadsheet);
   const targets = readJobOpsJobsForRescore_(spreadsheet);
+  const families = new Map(
+    readJobOpsRoleFamilies_(spreadsheet).map((r) => [r.roleFamily, r.strategicLevel]),
+  );
+  const evidence = spreadsheet.getSheetByName('Availability');
+  const latest = new Map(
+    evidence
+      ? evidence
+          .getDataRange()
+          .getValues()
+          .slice(1)
+          .map((r) => [String(r[0]), String(r[2])])
+      : [],
+  );
   return buildJobOpsWebDashboard_(
-    targets.map((target) => target.record),
+    targets.map((target) => ({
+      ...target.record,
+      STRATEGIC_LEVEL: families.get(target.record.ROLE_FAMILY) || 'UNKNOWN',
+      AVAILABILITY: latest.get(String(target.record.JOB_ID)) || 'UNKNOWN',
+    })),
     new Date(),
   );
 }
@@ -159,11 +178,6 @@ function updateJobOpsWebJob(input) {
  */
 function buildJobOpsWebDashboard_(records, now) {
   const jobs = records
-    .filter((record) =>
-      JOBOPS_WEB_VISIBLE_PRIORITIES.includes(
-        normalizeJobOpsSingleLineText_(record.PRIORITY).toUpperCase(),
-      ),
-    )
     .map((record) => buildJobOpsWebJobViewModel_(record, now))
     .sort(compareJobOpsWebJobs_);
 
@@ -177,6 +191,8 @@ function buildJobOpsWebDashboard_(records, now) {
     ).length,
     followUpsDue: jobs.filter((job) => job.followUpDue).length,
     pendingFit: jobs.filter((job) => !job.fitVersion).length,
+    unknownFit: jobs.filter((job) => job.fitLevel === 'UNKNOWN').length,
+    universe: 'ALL_JOBS',
   };
 
   return {
@@ -184,6 +200,7 @@ function buildJobOpsWebDashboard_(records, now) {
     statuses: JOBOPS_APPLICATION_STATUSES.slice(),
     jobs,
     counts,
+    metrics: buildJobOpsSearchMetrics_(records),
   };
 }
 
@@ -204,6 +221,8 @@ function buildJobOpsWebJobViewModel_(record, now) {
     followUpDate.getTime() <= today.getTime();
 
   return {
+    strategicLevel: record.STRATEGIC_LEVEL || 'UNKNOWN',
+    availability: record.AVAILABILITY || 'UNKNOWN',
     jobId: normalizeJobOpsSingleLineText_(record.JOB_ID),
     company: normalizeJobOpsSingleLineText_(record.COMPANY) || 'Empresa no indicada',
     position: normalizeJobOpsSingleLineText_(record.POSITION) || 'Cargo no indicado',
@@ -537,6 +556,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
         </div>
       </div>
       <div class="actions">
+        <button class="btn" id="previewBtn">Descubrir (vista previa)</button>
         <button class="btn" id="refreshBtn">Actualizar</button>
         <button class="btn" id="fitBtn">Mejorar scoring</button>
         <button class="btn primary" id="ingestBtn">Procesar alertas</button>
@@ -550,17 +570,26 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       <div class="tabs" id="tabs">
         <button class="tab active" data-view="queue">Por revisar</button>
         <button class="tab" data-view="applied">Aplicadas</button>
+        <button class="tab" data-view="target">Objetivo</button>
+        <button class="tab" data-view="bridge">Puente</button>
+        <button class="tab" data-view="new">Nuevas</button>
+        <button class="tab" data-view="confirmed">Fit favorable</button>
+        <button class="tab" data-view="unknown">Informaci?n insuficiente</button>
+        <button class="tab" data-view="due">Seguimientos</button>
         <button class="tab" data-view="all">Todas</button>
         <button class="tab" data-view="archived">Archivadas</button>
       </div>
       <select id="priorityFilter">
         <option value="">Todas las prioridades</option>
+        <option value="LOW">LOW</option>
         <option value="HIGH">HIGH</option>
         <option value="REVIEW">REVIEW</option>
         <option value="OPTIONAL">OPTIONAL</option>
       </select>
     </section>
 
+    <details><summary>Estad?sticas (todos los registros)</summary><p>Estado actual; avance a entrevista es un m?nimo observable. CV recomendado no prueba CV utilizado.</p><pre id="metrics"></pre></details>
+    <section id="preview"></section>
     <main class="grid" id="jobs"></main>
   </div>
   <div class="toast" id="toast"></div>
@@ -624,6 +653,12 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
     }
 
     function matchesView(job) {
+      if (state.view === 'target') return job.strategicLevel === 'DIRECT';
+      if (state.view === 'bridge') return job.strategicLevel === 'BRIDGE';
+      if (state.view === 'new') return job.status === 'NEW';
+      if (state.view === 'confirmed') return ['STRONG','GOOD'].indexOf(job.fitLevel)>=0;
+      if (state.view === 'unknown') return job.fitLevel === 'UNKNOWN';
+      if (state.view === 'due') return job.followUpDue;
       if (state.view === 'queue') return ['NEW','REVIEW','READY'].indexOf(job.status) >= 0;
       if (state.view === 'applied') return ['APPLIED','FOLLOW_UP','SCREENING','TECHNICAL','OFFER'].indexOf(job.status) >= 0;
       if (state.view === 'archived') return job.archived;
@@ -679,7 +714,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       top.append(left,scoreWrap); card.appendChild(top);
 
       var details=document.createElement('div'); details.className='details';
-      [['Salario',job.salary],['Experiencia',job.experience],['Fit',job.fitLevel+(job.fitVersion ? ' ('+(job.fitAdjustment>=0?'+':'')+job.fitAdjustment+')' : ' · pendiente')],['Seguimiento',job.followUpDate]]
+      [['Disponibilidad',job.availability],['Salario',job.salary],['Experiencia',job.experience],['Fit',job.fitLevel+(job.fitVersion ? ' ('+(job.fitAdjustment>=0?'+':'')+job.fitAdjustment+')' : ' · pendiente')],['Seguimiento',job.followUpDate]]
         .forEach(function(x){ var d=detail(x[0],x[1]); if(d) details.appendChild(d); });
       card.appendChild(details);
 
@@ -691,10 +726,12 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       card.appendChild(signals);
 
       var actions=document.createElement('div'); actions.className='card-actions';
-      actions.appendChild(linkButton('Abrir vacante',job.jobUrl));
+      actions.appendChild(linkButton(job.availability==='CLOSED' ? 'Cierre confirmado' : 'Abrir vacante',job.availability==='CLOSED' ? '' : job.jobUrl));
+      if(job.source==='Himalayas') actions.appendChild(linkButton('Fuente: Himalayas','https://himalayas.app'));
       if(job.cvLink){ actions.appendChild(linkButton('Abrir CV recomendado',job.cvLink)); }
       card.appendChild(actions);
 
+      if (job.preview) return card;
       var edit=document.createElement('div'); edit.className='edit';
       var select=document.createElement('select');
       state.payload.statuses.forEach(function(status){
@@ -743,7 +780,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       jobs.forEach(function(job){ root.appendChild(renderCard(job)); });
     }
 
-    function render() { renderStats(); renderJobs(); }
+    function render() { renderStats(); renderJobs(); document.getElementById('metrics').textContent=JSON.stringify(state.payload.metrics,null,2); }
 
     async function loadDashboard(showBusy) {
       if (showBusy !== false) setBusy(true);
@@ -752,6 +789,18 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       finally { if (showBusy !== false) setBusy(false); }
     }
 
+    document.getElementById('previewBtn').addEventListener('click', async function(){
+      setBusy(true);
+      try {
+        var result = await callServer('dryRunJobDiscovery');
+        var root = document.getElementById('preview'); root.replaceChildren();
+        var label = document.createElement('p');
+        label.textContent = 'Vista previa sin importar: '+result.wouldCreateJobs+' nuevas ? '+result.duplicates+' duplicadas ? '+result.errors.length+' errores';
+        root.appendChild(label);
+        result.preview.forEach(function(job){job.preview=true; root.appendChild(renderCard(job));});
+      } catch(error){ showToast(error.message,true); }
+      finally { setBusy(false); }
+    });
     document.getElementById('refreshBtn').addEventListener('click', function(){ loadDashboard(true); });
     document.getElementById('fitBtn').addEventListener('click', async function(){
       setBusy(true);
