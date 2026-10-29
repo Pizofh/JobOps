@@ -22,6 +22,12 @@ Todas incluye LOW y las aplicaciones siguen accesibles. pendingFit cuenta
 evaluaciones sin versión; unknownFit incluye información insuficiente aunque
 ya se haya evaluado. Los contadores visibles corresponden a los filtros actuales.
 
+El descubrimiento aplica las protecciones de prioridad después de calcular el
+fit: pasantías y cargos de alta responsabilidad tienen un límite de OPTIONAL.
+Las correcciones de familias puente usan FINAL_SCORE cuando existe evaluación y
+conservan el límite de FIT_LEVEL; no sustituyen el fit por UNKNOWN. El cambio
+afecta únicamente a candidatas nuevas y no repara datos históricos al desplegar.
+
 ## Disponibilidad
 
 Ejecutar manualmente `checkJobAvailability()` tras desplegar. No instala triggers.

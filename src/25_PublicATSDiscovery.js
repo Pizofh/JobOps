@@ -11,6 +11,7 @@
 /* global readJobOpsConfig_, readJobOpsDeduplicationIndex_, readJobOpsScriptProperties_ */
 /* global registerJobOpsCandidate_ */
 /* global buildJobOpsWebDashboard_ */
+/* global capJobOpsPriorityByFit_ */
 /* exported setupPublicAtsBoards, dryRunPublicAtsDiscovery, ingestPublicAtsJobs, dryRunJobDiscovery, ingestDiscoveredJobs */
 
 const JOBOPS_PUBLIC_ATS_SHEET = 'PublicBoards';
@@ -171,6 +172,10 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
         };
         const record = buildJobOpsJobRecord_(input, parsed, config);
         Object.assign(record, evaluateJobOpsJob_(parsed, context));
+        Object.assign(
+          record,
+          applyJobOpsPublicDiscoveryPriorityGuards_(record, config, context.roleFamilies),
+        );
         record.GMAIL_MESSAGE_ID = '';
         record.GMAIL_THREAD_ID = '';
         record.NOTES =
@@ -248,7 +253,7 @@ function applyJobOpsPublicDiscoveryPriorityGuards_(record, config, roleFamilies)
   if (enabledFamily && result.ROLE_FAMILY !== suggestedBridgeFamily) {
     result.ROLE_FAMILY = suggestedBridgeFamily;
     result.PRIORITY = getJobOpsPriorityForEvaluation_(
-      Number(result.MATCH_SCORE) || 0,
+      Number(result.FIT_VERSION ? result.FINAL_SCORE : result.MATCH_SCORE) || 0,
       config,
       enabledFamily,
       { position: result.POSITION },
@@ -282,7 +287,8 @@ function applyJobOpsPublicDiscoveryPriorityGuards_(record, config, roleFamilies)
       result.FIT_REASONS = [existing, reason].filter(Boolean).join('\n');
     }
   }
-  // UNKNOWN is intentional: no structured requirements assessment was run.
+  // A bridge-family correction must never undo the structured fit cap.
+  result.PRIORITY = capJobOpsPriorityByFit_(result.PRIORITY, result.FIT_LEVEL);
   return result;
 }
 
