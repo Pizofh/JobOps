@@ -172,7 +172,8 @@ test('rescoreJobs updates only evaluation fields and retains manual job values',
   assert.equal(result.rescoredJobs, 1);
   assert.equal(row[headers.indexOf('ROLE_FAMILY')], 'DEVOPS_CLOUDOPS_JR');
   assert.equal(row[headers.indexOf('MATCH_SCORE')], 24);
-  assert.equal(row[headers.indexOf('PRIORITY')], 'HIGH');
+  assert.equal(row[headers.indexOf('FIT_LEVEL')], 'UNKNOWN');
+  assert.equal(row[headers.indexOf('PRIORITY')], 'REVIEW');
   assert.match(row[headers.indexOf('STRONG_MATCHES')], /REMOTE \+4/);
   assert.equal(row[headers.indexOf('STATUS')], 'APPLIED');
   assert.equal(row[headers.indexOf('APPLIED_DATE')], '2026-07-15');

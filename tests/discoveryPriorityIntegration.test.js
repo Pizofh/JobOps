@@ -38,6 +38,7 @@ test('discovery preview and import apply guards, preserve fit, and leave duplica
   assert.equal(preview.wouldCreateJobs, 1);
   assert.equal(preview.preview[0].priority, 'OPTIONAL');
   assert.equal(preview.preview[0].fitProvider, 'DETERMINISTIC');
+  assert.equal(preview.preview[0].strategicLevel, 'DIRECT');
   assert.equal(requests, preview.checkedQueries);
   assert.deepEqual(sheet.getDataRange().getValues(), before);
 
@@ -61,6 +62,58 @@ test('discovery preview and import apply guards, preserve fit, and leave duplica
   assert.equal(repeated.createdJobs, 0);
   assert.ok(repeated.duplicates > 0);
   assert.deepEqual(sheet.getDataRange().getValues(), manualSnapshot);
+});
+
+test('discovery logs compact entries and uses configured strategy after bridge correction', () => {
+  const services = createFakeGoogleServices();
+  const logs = [];
+  let requests = 0;
+  const c = loadJobOpsContext({
+    ...services.globals,
+    Utilities: { formatDate: (date) => date.toISOString() },
+    console: { log: (entry) => logs.push(entry) },
+    UrlFetchApp: {
+      fetch() {
+        requests += 1;
+        return {
+          getResponseCode: () => 200,
+          getContentText: () =>
+            JSON.stringify({
+              jobs: [
+                {
+                  guid: 'https://himalayas.app/companies/example/jobs/linux-support',
+                  applicationLink: 'https://himalayas.app/companies/example/jobs/linux-support',
+                  companyName: 'Example',
+                  title: 'Associate Linux Support Engineer',
+                  seniority: ['Mid-level'],
+                  description: 'Required: Python. Linux Ansible troubleshooting.',
+                },
+              ],
+            }),
+        };
+      },
+    },
+  });
+  c.setupJobOps();
+  const sheet = services.spreadsheet.getSheetByName('Jobs');
+  const before = sheet.getDataRange().getValues();
+  // Exercise the existing correction rather than relying on the default classifier.
+  const evaluate = c.evaluateJobOpsJob_;
+  c.evaluateJobOpsJob_ = (job, context) => ({
+    ...evaluate(job, context),
+    ROLE_FAMILY: 'UNRELATED',
+  });
+  const result = c.dryRunJobDiscovery();
+  assert.equal(result.preview[0].roleFamily, 'LINUX_INFRASTRUCTURE');
+  assert.equal(result.preview[0].strategicLevel, 'BRIDGE');
+  assert.equal(requests, result.checkedQueries);
+  assert.equal(logs.length, 2);
+  assert.equal(JSON.parse(logs[0]).wouldCreateJobs, 1);
+  assert.equal(JSON.parse(logs[1]).strategicLevel, 'BRIDGE');
+  assert.ok(logs.every((line) => line.length < 2500));
+  assert.equal(JSON.parse(logs[0]).preview, undefined);
+  assert.ok(result.preview[0].fitReasons);
+  assert.deepEqual(sheet.getDataRange().getValues(), before);
 });
 
 test('bridge correction uses final score and retains poor-fit caps and evidence', () => {

@@ -55,7 +55,8 @@ test('ingestion dry run is immutable and real ingestion isolates message errors'
   assert.ok(recruiterRow);
   assert.equal(recruiterRow[headers.indexOf('ROLE_FAMILY')], 'DEVOPS_CLOUDOPS_JR');
   assert.equal(recruiterRow[headers.indexOf('MATCH_SCORE')], 26);
-  assert.equal(recruiterRow[headers.indexOf('PRIORITY')], 'HIGH');
+  assert.equal(recruiterRow[headers.indexOf('FIT_LEVEL')], 'UNKNOWN');
+  assert.equal(recruiterRow[headers.indexOf('PRIORITY')], 'REVIEW');
   assert.equal(recruiterRow[headers.indexOf('RECOMMENDED_CV')], 'CV_TO_CREATE');
   assert.equal(recruiterRow[headers.indexOf('RECRUITER_EMAIL')], 'ana@talent.example');
   assert.equal(jobsSheet.getLastRow(), 3);
