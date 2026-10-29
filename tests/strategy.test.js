@@ -141,7 +141,7 @@ test('bridge roles can be HIGH and unavailable profile links fall back to CV_TO_
     {
       position: 'Application Support Engineer L2',
       descriptionText:
-        'Requirements: Linux, Docker, troubleshooting, API, SQL and logs. Application Support.',
+        'Requirements: 2 years experience. Linux, Docker, troubleshooting, API, SQL and logs. Application Support.',
       requiredTechnologies: ['Linux', 'Docker', 'SQL'],
       isRecruiter: false,
     },

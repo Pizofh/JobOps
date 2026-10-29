@@ -67,7 +67,27 @@ function ingestPublicAtsJobs() {
 /** Default: discovers jobs from multiple employers with no manual company list. */
 function dryRunJobDiscovery() {
   const result = runJobOpsPublicAtsDiscovery_(true);
-  console.log(JSON.stringify(result, null, 2));
+  const { preview, ...summary } = result;
+  console.log(JSON.stringify(summary));
+  for (const job of preview) {
+    console.log(
+      JSON.stringify({
+        company: job.company.slice(0, 120),
+        position: job.position.slice(0, 160),
+        source: job.source,
+        strategicLevel: job.strategicLevel,
+        roleFamily: job.roleFamily,
+        fitLevel: job.fitLevel,
+        priority: job.priority,
+        matchScore: job.matchScore,
+        finalScore: job.finalScore,
+        experience: job.experience.slice(0, 160),
+        salary: job.salary.slice(0, 160),
+        fitReasons: job.fitReasons.slice(0, 500),
+        jobUrl: job.jobUrl.slice(0, 500),
+      }),
+    );
+  }
   return result;
 }
 
@@ -176,6 +196,10 @@ function runJobOpsPublicAtsDiscovery_(forceDryRun) {
           record,
           applyJobOpsPublicDiscoveryPriorityGuards_(record, config, context.roleFamilies),
         );
+        // Preview-only projection: use the configured family after any correction.
+        record.STRATEGIC_LEVEL =
+          context.roleFamilies.find((family) => family.roleFamily === record.ROLE_FAMILY)
+            ?.strategicLevel || 'UNKNOWN';
         record.GMAIL_MESSAGE_ID = '';
         record.GMAIL_THREAD_ID = '';
         record.NOTES =

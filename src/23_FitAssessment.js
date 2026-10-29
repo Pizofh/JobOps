@@ -4,7 +4,7 @@
  * Version marker for deterministic fit logic. Bump when rules change so stored
  * rows can be re-evaluated without deleting or re-ingesting Jobs.
  */
-const JOBOPS_FIT_VERSION = '1.1.0';
+const JOBOPS_FIT_VERSION = '1.2.0';
 const JOBOPS_FIT_LEVELS = Object.freeze(['STRONG', 'GOOD', 'STRETCH', 'POOR', 'UNKNOWN']);
 
 /**
@@ -176,6 +176,11 @@ function calculateJobOpsFitAssessment_(rawEvidence, existingRiskFlags) {
       adjustment <= -4
     ) {
       level = 'STRETCH';
+    } else if (seniority === 'MID' && years === 0 && specific.years === 0) {
+      level = 'UNKNOWN';
+      reasons.push(
+        'Seniority MID sin experiencia mínima explícita; compatibilidad pendiente de revisión humana.',
+      );
     } else if (adjustment >= 2) {
       level = 'STRONG';
     } else {
@@ -302,7 +307,8 @@ function capJobOpsPriorityByFit_(priority, fitLevel) {
   const ranks = { LOW: 0, OPTIONAL: 1, REVIEW: 2, HIGH: 3 };
   const normalized = normalizeJobOpsSingleLineText_(priority).toUpperCase();
   const level = normalizeJobOpsSingleLineText_(fitLevel).toUpperCase();
-  const maximum = level === 'POOR' ? 'OPTIONAL' : level === 'STRETCH' ? 'REVIEW' : 'HIGH';
+  const maximum =
+    level === 'POOR' ? 'OPTIONAL' : ['STRETCH', 'UNKNOWN'].includes(level) ? 'REVIEW' : 'HIGH';
 
   if (!(normalized in ranks)) {
     return 'LOW';

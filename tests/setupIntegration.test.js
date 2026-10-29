@@ -89,5 +89,5 @@ test('setup repairs version cells that Sheets coerced into dates', () => {
   context.setupJobOps();
 
   assert.equal(sheet.getRange(2, headers.indexOf('PARSER_VERSION') + 1).getValues()[0][0], '1.1.0');
-  assert.equal(sheet.getRange(2, headers.indexOf('FIT_VERSION') + 1).getValues()[0][0], '1.1.0');
+  assert.equal(sheet.getRange(2, headers.indexOf('FIT_VERSION') + 1).getValues()[0][0], '1.2.0');
 });

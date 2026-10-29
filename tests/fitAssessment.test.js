@@ -146,7 +146,7 @@ test('fit migration skips LOW and already current assessments', () => {
     context.isJobOpsFitMigrationCandidate_({
       PRIORITY: 'HIGH',
       STATUS: 'NEW',
-      FIT_VERSION: '1.1.0',
+      FIT_VERSION: '1.2.0',
     }),
     false,
   );
