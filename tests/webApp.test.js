@@ -31,7 +31,7 @@ function makeRecord(overrides = {}) {
   };
 }
 
-test('web dashboard includes LOW jobs and sorts HIGH before REVIEW before OPTIONAL', () => {
+test('web dashboard includes LOW jobs and sorts all four priorities', () => {
   const context = loadJobOpsContext({
     Utilities: {
       formatDate(date, _timezone, format) {
@@ -59,6 +59,7 @@ test('web dashboard includes LOW jobs and sorts HIGH before REVIEW before OPTION
   assert.equal(dashboard.counts.high, 1);
   assert.equal(dashboard.counts.review, 1);
   assert.equal(dashboard.counts.optional, 1);
+  assert.equal(dashboard.counts.low, 1);
 });
 
 test('web dashboard marks due follow-ups only for active applied statuses', () => {
@@ -149,6 +150,8 @@ test('web app includes compact mobile layout and touch-friendly controls', () =>
   assert.match(renderedHtml, /@media \(max-width: 390px\)/u);
   assert.match(renderedHtml, /position: sticky/u);
   assert.match(renderedHtml, /min-height: 44px/u);
+  assert.match(renderedHtml, /<option value="LOW">LOW<\/option>/u);
+  assert.match(renderedHtml, /\['LOW',counts.low\]/u);
 });
 
 test('dashboard keeps applied jobs for follow-up and excludes skipped jobs from the review queue', () => {

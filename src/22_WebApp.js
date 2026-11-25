@@ -8,7 +8,7 @@
 /* global openConfiguredJobOpsSpreadsheet_, readJobOpsConfig_, readJobOpsJobsForRescore_ */
 /* global readJobOpsScriptProperties_ */
 
-const JOBOPS_WEB_VISIBLE_PRIORITIES = Object.freeze(['HIGH', 'REVIEW', 'OPTIONAL']);
+const JOBOPS_WEB_VISIBLE_PRIORITIES = Object.freeze(['HIGH', 'REVIEW', 'OPTIONAL', 'LOW']);
 const JOBOPS_WEB_ACTIVE_STATUSES = Object.freeze([
   'NEW',
   'REVIEW',
@@ -186,6 +186,7 @@ function buildJobOpsWebDashboard_(records, now) {
     high: jobs.filter((job) => job.priority === 'HIGH').length,
     review: jobs.filter((job) => job.priority === 'REVIEW').length,
     optional: jobs.filter((job) => job.priority === 'OPTIONAL').length,
+    low: jobs.filter((job) => job.priority === 'LOW').length,
     applied: jobs.filter((job) =>
       ['APPLIED', 'FOLLOW_UP', 'SCREENING', 'TECHNICAL', 'OFFER'].includes(job.status),
     ).length,
@@ -290,7 +291,7 @@ function buildJobOpsWebUpdatePlan_(input) {
  * @returns {number}
  */
 function compareJobOpsWebJobs_(left, right) {
-  const priorityRank = { HIGH: 0, REVIEW: 1, OPTIONAL: 2 };
+  const priorityRank = { HIGH: 0, REVIEW: 1, OPTIONAL: 2, LOW: 3 };
   const leftRank = priorityRank[left.priority] ?? 99;
   const rightRank = priorityRank[right.priority] ?? 99;
   if (leftRank !== rightRank) {
@@ -408,7 +409,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
     .btn.link { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
     .btn:disabled { opacity: .5; cursor: wait; }
     .stats {
-      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px;
+      display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px;
     }
     .stat {
       background: rgba(17,24,39,.82); border: 1px solid var(--line); border-radius: 14px;
@@ -449,6 +450,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
     .HIGH { color: #6ee7b7; background: rgba(16,185,129,.12); border-color: rgba(52,211,153,.3); }
     .REVIEW { color: #93c5fd; background: rgba(59,130,246,.12); border-color: rgba(96,165,250,.3); }
     .OPTIONAL { color: #fde68a; background: rgba(245,158,11,.12); border-color: rgba(251,191,36,.3); }
+    .LOW { color: #cbd5e1; background: rgba(148,163,184,.12); border-color: rgba(148,163,184,.3); }
     .due { color: #fecdd3; background: rgba(244,63,94,.12); border-color: rgba(251,113,133,.3); }
     .details {
       margin: 13px 0; padding: 11px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
@@ -552,7 +554,7 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
         <div class="logo">J</div>
         <div>
           <h1>JobOps</h1>
-          <div class="subtitle">Centro de operación · solo HIGH / REVIEW / OPTIONAL</div>
+          <div class="subtitle">Centro de operación · HIGH / REVIEW / OPTIONAL / LOW</div>
         </div>
       </div>
       <div class="actions">
@@ -581,10 +583,10 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
       </div>
       <select id="priorityFilter">
         <option value="">Todas las prioridades</option>
-        <option value="LOW">LOW</option>
         <option value="HIGH">HIGH</option>
         <option value="REVIEW">REVIEW</option>
         <option value="OPTIONAL">OPTIONAL</option>
+        <option value="LOW">LOW</option>
       </select>
     </section>
 
@@ -641,12 +643,13 @@ const JOBOPS_WEB_APP_HTML = String.raw`<!doctype html>
         high: jobs.filter(function(job){ return job.priority==='HIGH'; }).length,
         review: jobs.filter(function(job){ return job.priority==='REVIEW'; }).length,
         optional: jobs.filter(function(job){ return job.priority==='OPTIONAL'; }).length,
+        low: jobs.filter(function(job){ return job.priority==='LOW'; }).length,
         applied: jobs.filter(function(job){
           return ['APPLIED','FOLLOW_UP','SCREENING','TECHNICAL','OFFER'].indexOf(job.status)>=0;
         }).length,
         followUpsDue: jobs.filter(function(job){ return job.followUpDue; }).length
       };
-      [['Visibles',counts.total],['HIGH',counts.high],['REVIEW',counts.review],['OPTIONAL',counts.optional],
+      [['Visibles',counts.total],['HIGH',counts.high],['REVIEW',counts.review],['OPTIONAL',counts.optional],['LOW',counts.low],
        ['Aplicadas',counts.applied],['Follow-ups vencidos',counts.followUpsDue]].forEach(function(x){
         root.appendChild(stat(x[0], x[1]));
       });
