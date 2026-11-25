@@ -99,3 +99,21 @@ test('LinkedIn InMail relay with a technical opportunity is recognized as recrui
     false,
   );
 });
+
+test('closed job notifications are ignored without suppressing genuine alerts', () => {
+  const context = loadJobOpsContext();
+  assert.equal(
+    context.isJobOpsAdministrativeMessage_({
+      subject: 'La publicación de empleo de DevOps Engineer en Example se cerró',
+      body: 'La publicación ha finalizado.',
+    }),
+    true,
+  );
+  assert.equal(
+    context.isJobOpsAdministrativeMessage_({
+      subject: 'DevOps Engineer en Example',
+      body: 'Aplica a esta vacante.',
+    }),
+    false,
+  );
+});
