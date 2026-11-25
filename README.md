@@ -58,6 +58,8 @@ Script Properties opcionales:
 - `GROQ_API_KEY` / `GROQ_MODEL` (default: `openai/gpt-oss-20b`)
 - `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` (default: `openrouter/free`)
 
+El modelo retirado `cohere/north-mini-code:free` se migra en runtime a `openrouter/free`. Groq y OpenRouter usan un presupuesto de salida acotado de 8192 tokens para reducir truncamientos en alertas múltiples; el proveedor puede seguir fallando por cuota o disponibilidad.
+
 Solo necesitas una API key para habilitar IA; con varias configuradas se activa el fallback. Las claves nunca deben guardarse en Git. JobOps redacciona direcciones y URLs personalizadas antes de enviar evidencia, usa referencias opacas para enlaces y valida localmente cada vacante devuelta.
 
 Para validar la integración, conserva `DRY_RUN = true`, despliega manualmente con `clasp` y ejecuta `dryRunIngestion()`.

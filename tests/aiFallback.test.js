@@ -156,3 +156,29 @@ test('OpenAI-compatible request uses strict JSON schema and never embeds provide
   );
   assert.equal(built.options.payload.includes('secret-key-value'), false);
 });
+
+test('retired OpenRouter model migrates to the configured default router', () => {
+  const properties = {
+    OPENROUTER_API_KEY: 'test-key',
+    OPENROUTER_MODEL: 'cohere/north-mini-code:free',
+  };
+  const context = loadJobOpsContext({
+    PropertiesService: {
+      getScriptProperties: () => ({ getProperty: (key) => properties[key] || '' }),
+    },
+  });
+  assert.equal(context.readJobOpsAiProviderSettings_()[0].model, 'openrouter/free');
+  properties.OPENROUTER_MODEL = 'example/custom-model';
+  assert.equal(context.readJobOpsAiProviderSettings_()[0].model, 'example/custom-model');
+});
+
+test('multi-job structured output has a larger bounded completion budget', () => {
+  const context = loadJobOpsContext();
+  for (const name of ['groq', 'openrouter']) {
+    const payload = context.buildJobOpsOpenAiSemanticRequest_(semanticRequest(context), {
+      name,
+      model: 'example/model',
+    });
+    assert.equal(payload.max_completion_tokens || payload.max_tokens, 8192);
+  }
+});

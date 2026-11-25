@@ -70,6 +70,10 @@ function readJobOpsAiProviderSettings_(providerNames) {
       if (definition.name === 'gemini' && (!model || model === 'gemini-2.5-flash-lite')) {
         model = JOBOPS_GEMINI_DEFAULT_MODEL;
       }
+      // Migrate the retired model observed in production diagnostics.
+      if (definition.name === 'openrouter' && model === 'cohere/north-mini-code:free') {
+        model = JOBOPS_OPENROUTER_DEFAULT_MODEL;
+      }
       model = model || definition.defaultModel;
 
       if (apiKey && !/^[A-Za-z0-9._:/-]{3,120}$/u.test(model)) {
@@ -389,9 +393,10 @@ function buildJobOpsOpenAiSemanticRequest_(semanticRequest, provider) {
   };
 
   if (provider.name === 'groq') {
-    payload.max_completion_tokens = 2200;
+    // Multi-job digests can contain dozens of structured records plus reasoning tokens.
+    payload.max_completion_tokens = 8192;
   } else {
-    payload.max_tokens = 2200;
+    payload.max_tokens = 8192;
   }
 
   return payload;

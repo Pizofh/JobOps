@@ -95,7 +95,17 @@ function getEffectiveJobOpsMessage_(input) {
  * @returns {boolean}
  */
 function isJobOpsAdministrativeMessage_(effective) {
+  const subject = foldJobOpsText_(effective.subject);
   const content = foldJobOpsText_(`${effective.subject}\n${effective.body}`);
+
+  // Closed-posting notifications are lifecycle messages, not new vacancies.
+  if (
+    /^(?:la publicacion de empleo de .+ se cerro|your job posting .+ (?:has closed|is closed))$/u.test(
+      subject,
+    )
+  ) {
+    return true;
+  }
 
   const signals = [
     'has creado tu alerta de empleo',
