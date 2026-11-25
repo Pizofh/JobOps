@@ -115,3 +115,43 @@ test('a later exact URL enriches the stored job and preserves manual spreadsheet
   assert.equal(row[headers.indexOf('FOLLOW_UP_DATE')], '2026-07-22');
   assert.equal(row[headers.indexOf('NOTES')], 'Manual review note');
 });
+
+test('Gmail scan advances beyond a full page of unrelated messages', () => {
+  const alert = fixture('generic/linkedin-alert.json');
+  const noise = Array.from({ length: 50 }, (_, index) => ({
+    ...alert,
+    messageId: `noise-${index}`,
+    threadId: `noise-thread-${index}`,
+    from: 'News <news@example.test>',
+    subject: 'Weather report',
+    plainBody: 'Rain expected.',
+    htmlBody: '',
+  }));
+  const services = createFakeGoogleServices({
+    gmailThreads: [...noise, alert].map((message) => ({
+      threadId: message.threadId,
+      messages: [message],
+    })),
+  });
+  const context = loadJobOpsContext(services.globals);
+  context.setupJobOps();
+  const result = context.dryRunIngestion();
+  assert.equal(result.scannedMessages, 51);
+  assert.equal(result.candidateMessages, 1);
+  assert.equal(result.wouldCreateJobs, 1);
+});
+
+test('Gmail preferred search requires subject signals for exact Google sender', () => {
+  const context = loadJobOpsContext();
+  const result = context.buildJobOpsPreferredGmailQuery_('newer_than:30d', [
+    { senderDomains: ['linkedin.com'], subjectPatterns: [] },
+    {
+      senderDomains: ['googlealerts-noreply@google.com'],
+      subjectPatterns: ['alerta de empleo'],
+    },
+  ]);
+  assert.equal(
+    result,
+    'newer_than:30d {from:linkedin.com (from:googlealerts-noreply@google.com subject:"alerta de empleo")}',
+  );
+});

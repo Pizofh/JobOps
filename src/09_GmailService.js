@@ -8,34 +8,52 @@
 function readJobOpsGmailCandidates_(config, sourceDefinitions) {
   const query = buildJobOpsGmailSearchQuery_(config.LOOKBACK_DAYS);
   const scanLimit = Math.min(Math.max(config.MAX_MESSAGES_PER_RUN * 5, 50), 500);
-  const threads = GmailApp.search(query, 0, scanLimit);
-  const messageGroups = threads.length > 0 ? GmailApp.getMessagesForThreads(threads) : [];
-  const rawMessages = [];
-
-  for (let threadIndex = 0; threadIndex < messageGroups.length; threadIndex += 1) {
-    const thread = threads[threadIndex];
-    for (const message of messageGroups[threadIndex]) {
-      rawMessages.push({ message, thread, date: message.getDate() });
-    }
-  }
-
-  rawMessages.sort((left, right) => right.date.getTime() - left.date.getTime());
+  const preferredQuery = buildJobOpsPreferredGmailQuery_(query, sourceDefinitions);
+  const queries = preferredQuery ? [preferredQuery, query] : [query];
+  const pageCount = Math.max(1, Math.min(5, Math.floor(500 / scanLimit)));
+  const seen = new Set();
   const candidates = [];
   let ignoredMessages = 0;
   let scannedMessages = 0;
 
-  for (const item of rawMessages.slice(0, scanLimit)) {
-    const envelope = createJobOpsGmailEnvelope_(item.message, item.thread);
-    scannedMessages += 1;
-    const detection = detectJobOpsSource_(envelope.input, sourceDefinitions);
-    if (detection.candidate) {
-      envelope.detection = detection;
-      candidates.push(envelope);
-      if (candidates.length >= config.MAX_MESSAGES_PER_RUN) {
+  for (const searchQuery of queries) {
+    for (let page = 0; page < pageCount; page += 1) {
+      const threads = GmailApp.search(searchQuery, page * scanLimit, scanLimit);
+      const messageGroups = threads.length > 0 ? GmailApp.getMessagesForThreads(threads) : [];
+      const rawMessages = [];
+
+      for (let threadIndex = 0; threadIndex < messageGroups.length; threadIndex += 1) {
+        const thread = threads[threadIndex];
+        for (const message of messageGroups[threadIndex]) {
+          rawMessages.push({ message, thread, date: message.getDate() });
+        }
+      }
+
+      rawMessages.sort((left, right) => right.date.getTime() - left.date.getTime());
+
+      for (const item of rawMessages) {
+        const id = item.message.getId();
+        if (seen.has(id)) {
+          continue;
+        }
+        seen.add(id);
+        const envelope = createJobOpsGmailEnvelope_(item.message, item.thread);
+        scannedMessages += 1;
+        const detection = detectJobOpsSource_(envelope.input, sourceDefinitions);
+        if (detection.candidate) {
+          envelope.detection = detection;
+          candidates.push(envelope);
+          if (candidates.length >= config.MAX_MESSAGES_PER_RUN) {
+            return { candidates, scannedMessages, ignoredMessages };
+          }
+        } else {
+          ignoredMessages += 1;
+        }
+      }
+
+      if (threads.length < scanLimit) {
         break;
       }
-    } else {
-      ignoredMessages += 1;
     }
   }
 
@@ -62,6 +80,39 @@ function buildJobOpsGmailSearchQuery_(lookbackDays) {
     '-label:"Jobs/Failed"',
     '-label:"Jobs/Processing"',
   ].join(' ');
+}
+
+/**
+ * Prioritizes enabled platform senders without excluding forwarded messages
+ * or recruiters from the subsequent general search.
+ *
+ * @param {string} query
+ * @param {Object[]} sourceDefinitions
+ * @returns {string}
+ */
+function buildJobOpsPreferredGmailQuery_(query, sourceDefinitions) {
+  const clauses = new Set();
+
+  for (const definition of sourceDefinitions) {
+    for (const sender of definition.senderDomains) {
+      const value = String(sender).trim();
+      if (!/^[a-z0-9@.-]+$/iu.test(value)) {
+        continue;
+      }
+
+      if (value.includes('@') && definition.subjectPatterns.length > 0) {
+        for (const pattern of definition.subjectPatterns) {
+          if (/^[\p{L}\p{N} _-]+$/u.test(pattern)) {
+            clauses.add(`(from:${value} subject:"${pattern}")`);
+          }
+        }
+      } else {
+        clauses.add(`from:${value}`);
+      }
+    }
+  }
+
+  return clauses.size > 0 ? `${query} {${Array.from(clauses).join(' ')}}` : '';
 }
 
 /**
